@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, ArrowLeft, Sun, Tent, Users, Clock } from 'lucide-react';
+import { Lock, ArrowLeft, Sun, Tent, Users, Clock, Star } from 'lucide-react';
 import type { Member, BadgeStatus } from '../lib/types';
 
 const SIMPLYBOOK_BASE = 'https://emeraldoasiscamp.simplybook.me/v2/#book/service';
@@ -10,23 +10,30 @@ interface ServiceCard {
   id: number;
   name: string;
   description: string;
+  price: string;
   icon: React.ReactNode;
 }
 
 const DAY_PASSES: ServiceCard[] = [
-  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, market access', icon: <Clock size={18} /> },
-  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit with sauna access', icon: <Sun size={18} /> },
-  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day experience', icon: <Sun size={18} /> },
+  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, market access', price: '$4', icon: <Clock size={18} /> },
+  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit with full property access', price: '$8', icon: <Sun size={18} /> },
+  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day experience', price: '$12', icon: <Sun size={18} /> },
+  { id: 23, name: 'Oasis Pass — 8 Hours', description: 'Dawn-to-dusk immersion', price: '$16', icon: <Sun size={18} /> },
+];
+
+const MEMBER_PASSES: ServiceCard[] = [
+  { id: 20, name: 'Silver/Gold Pass — 2 Hours', description: 'Member-rate day access', price: '$6', icon: <Star size={18} /> },
+  { id: 21, name: 'Silver/Gold Pass — 4 Hours', description: 'Member-rate extended access', price: '$10', icon: <Star size={18} /> },
 ];
 
 const CAMPSITES: ServiceCard[] = [
-  { id: 11, name: 'Campsite 3', description: 'Creekside primitive site', icon: <Tent size={18} /> },
-  { id: 12, name: 'Campsite 4', description: 'Wooded primitive site', icon: <Tent size={18} /> },
-  { id: 13, name: 'Campsite 5', description: 'Wooded primitive site', icon: <Tent size={18} /> },
-  { id: 14, name: 'Campsite 6', description: 'Wooded primitive site', icon: <Tent size={18} /> },
-  { id: 9, name: 'Campsite 7 — Social', description: 'Open social campsite', icon: <Tent size={18} /> },
-  { id: 8, name: 'Campsite 7 — Group Reserve', description: 'Full group reservation', icon: <Users size={18} /> },
-  { id: 10, name: 'Creekside Group #2', description: 'Group creekside camping', icon: <Users size={18} /> },
+  { id: 11, name: 'Campsite 3', description: 'Creekside primitive site', price: '$30/night', icon: <Tent size={18} /> },
+  { id: 12, name: 'Campsite 4', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
+  { id: 13, name: 'Campsite 5', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
+  { id: 14, name: 'Campsite 6', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
+  { id: 9, name: 'Campsite 7 — Social', description: 'Shared community site (1 spot)', price: '$20/night', icon: <Tent size={18} /> },
+  { id: 8, name: 'Campsite 7 — Group Reserve', description: 'Exclusive group use, up to 5 tents', price: '$60/night', icon: <Users size={18} /> },
+  { id: 10, name: 'Creekside Group #2', description: 'Group creekside camping', price: '$50/night', icon: <Users size={18} /> },
 ];
 
 interface BookProps {
@@ -107,15 +114,18 @@ export function Book({ member, badgeStatus }: BookProps) {
             >
               <ArrowLeft size={20} style={{ color: 'var(--ea-midnight)' }} />
             </button>
-            <h1
-              className="text-base"
-              style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                color: 'var(--ea-midnight)',
-              }}
-            >
-              {selectedService.name}
-            </h1>
+            <div className="flex-1">
+              <h1
+                className="text-base"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  color: 'var(--ea-midnight)',
+                }}
+              >
+                {selectedService.name}
+              </h1>
+              <p className="text-[11px] text-gray-400">{selectedService.price}</p>
+            </div>
           </div>
         </div>
         <iframe
@@ -150,82 +160,80 @@ export function Book({ member, badgeStatus }: BookProps) {
         </div>
 
         {/* Day Passes */}
-        <div>
-          <h2
-            className="text-sm font-semibold mb-3 flex items-center gap-2"
-            style={{ color: 'var(--ea-midnight)' }}
-          >
-            <Sun size={16} style={{ color: 'var(--ea-emerald)' }} />
-            Day Passes
-          </h2>
-          <div className="space-y-2">
-            {DAY_PASSES.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => setSelectedService(service)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
-                >
-                  {service.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                    {service.name}
-                  </p>
-                  <p className="text-[11px] text-gray-400">{service.description}</p>
-                </div>
-                <span
-                  className="text-xs font-semibold shrink-0"
-                  style={{ color: 'var(--ea-emerald)' }}
-                >
-                  Book →
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <ServiceSection
+          title="Day Passes"
+          icon={<Sun size={16} style={{ color: 'var(--ea-emerald)' }} />}
+          services={DAY_PASSES}
+          onSelect={setSelectedService}
+        />
+
+        {/* Member Passes */}
+        <ServiceSection
+          title="Member Passes"
+          icon={<Star size={16} style={{ color: 'var(--ea-emerald)' }} />}
+          services={MEMBER_PASSES}
+          onSelect={setSelectedService}
+        />
 
         {/* Campsites */}
-        <div>
-          <h2
-            className="text-sm font-semibold mb-3 flex items-center gap-2"
-            style={{ color: 'var(--ea-midnight)' }}
+        <ServiceSection
+          title="Campsites"
+          icon={<Tent size={16} style={{ color: 'var(--ea-emerald)' }} />}
+          services={CAMPSITES}
+          onSelect={setSelectedService}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ServiceSection({
+  title,
+  icon,
+  services,
+  onSelect,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  services: ServiceCard[];
+  onSelect: (s: ServiceCard) => void;
+}) {
+  return (
+    <div>
+      <h2
+        className="text-sm font-semibold mb-3 flex items-center gap-2"
+        style={{ color: 'var(--ea-midnight)' }}
+      >
+        {icon}
+        {title}
+      </h2>
+      <div className="space-y-2">
+        {services.map((service) => (
+          <button
+            key={service.id}
+            onClick={() => onSelect(service)}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
           >
-            <Tent size={16} style={{ color: 'var(--ea-emerald)' }} />
-            Campsites
-          </h2>
-          <div className="space-y-2">
-            {CAMPSITES.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => setSelectedService(service)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
-                >
-                  {service.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                    {service.name}
-                  </p>
-                  <p className="text-[11px] text-gray-400">{service.description}</p>
-                </div>
-                <span
-                  className="text-xs font-semibold shrink-0"
-                  style={{ color: 'var(--ea-emerald)' }}
-                >
-                  Book →
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+            >
+              {service.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                {service.name}
+              </p>
+              <p className="text-[11px] text-gray-400">{service.description}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+                {service.price}
+              </p>
+              <p className="text-[10px] text-gray-400">Book →</p>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
