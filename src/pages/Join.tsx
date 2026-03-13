@@ -12,15 +12,13 @@ export function Join() {
   useEffect(() => {
     // Listen for JotForm's postMessage when the form is submitted
     const handleMessage = (event: MessageEvent) => {
-      // Prevent parent window from being redirected
       if (typeof event.data === 'string' && event.data.includes('setHeight')) {
         return;
       }
       
-      // If the form redirects or completes, JotForm sometimes sends a specific message
+      // If the form completes and shows a thank you page
       if (event.data === 'formCompleted' || event.data?.action === 'submission-completed') {
         setShowRedirectNotice(true);
-        // Automatically open the login modal after a short delay so they can claim their account
         setTimeout(() => {
           setLoginOpen(true);
         }, 1000);
@@ -28,15 +26,6 @@ export function Join() {
     };
 
     window.addEventListener('message', handleMessage);
-
-    // Prevent any internal iframe redirects from forcing the parent window to navigate
-    window.onbeforeunload = function() {
-        if (!showRedirectNotice && document.activeElement && document.activeElement.tagName === 'IFRAME') {
-            setShowRedirectNotice(true);
-            setLoginOpen(true);
-            return false;
-        }
-    };
 
     // Inject JotForm auto-resize script
     const script = document.createElement('script');
@@ -54,12 +43,11 @@ export function Join() {
 
     return () => {
       window.removeEventListener('message', handleMessage);
-      window.onbeforeunload = null;
       if (document.body.contains(script)) {
         document.body.removeChild(script);
       }
     };
-  }, [showRedirectNotice]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -109,15 +97,13 @@ export function Join() {
         </div>
       ) : (
         <div className="flex-1 w-full bg-gray-50 relative">
-          {/* Using explicit sandbox to prevent top-level navigation while keeping popups alive for payments */}
           <iframe
             id="JotFormIFrame-251564463545057"
             title="Emerald Oasis Membership Signup"
-            src="https://form.jotform.com/251564463545057?isIframeEmbed=1"
+            src="https://form.jotform.com/251564463545057"
             className="w-full border-0"
             style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
             allowFullScreen={true}
-            sandbox="allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox allow-same-origin"
             allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write; display-capture"
           />
         </div>
