@@ -45,25 +45,16 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     setLoading(true);
 
     try {
-      // First check if they already have a Supabase account
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy-password-check-12345',
-      });
+      const normalizedEmail = email.toLowerCase().trim();
 
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        // Account exists — go to login
-        setMode('login');
-        setLoading(false);
-        return;
-      }
-
-      // No account — check jotform_submissions for PMA record
+      // First check for a PMA/JotForm record.
+      // If found, always start in claim mode.
+      // If an auth account already exists, handleClaim will gracefully switch to login.
       const { data: jotformMatch, error: jotformError } = await supabase
         .from('jotform_submissions')
         .select('*')
-        .eq('email', email.toLowerCase())
-        .order('submitted_at', { ascending: false })
+        .eq('email', normalizedEmail)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -72,11 +63,11 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
       }
 
       if (jotformMatch) {
-        // Found their PMA submission — let them claim
         setJotformData(jotformMatch);
         setMode('claim');
       } else {
-        setError("We couldn't find a PMA membership for this email. If you just signed up, it may take a moment to sync. Try again shortly, or sign up at the Join page.");
+        // Fallback path for non-JotForm accounts
+        setMode('login');
       }
     } catch {
       setError('An error occurred. Please try again.');
