@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { Search, Users, BarChart3, Lock } from 'lucide-react';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || 'oasis2026';
-const ADMIN_EMAIL = 'emeraldoasiscamp@gmail.com';
+const ADMIN_EMAILS = ['emeraldoasiscamp@gmail.com', 'connor@emeraldascent.com'];
 const SESSION_KEY = 'eo-admin-pin-auth';
 
 interface AdminProps {
@@ -22,7 +22,7 @@ export function Admin({ userEmail }: AdminProps) {
 
   useEffect(() => {
     // Bypass PIN for admin email
-    if (userEmail === ADMIN_EMAIL) {
+    if (ADMIN_EMAILS.includes(userEmail || '')) {
       setPinAuthed(true);
       return;
     }
