@@ -63,6 +63,8 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         .from('jotform_submissions')
         .select('*')
         .eq('email', email.toLowerCase())
+        .order('submitted_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (jotformError) {

@@ -2,140 +2,114 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function extractField(payload: Record<string, any>, ...keys: string[]): string {
-  for (const key of keys) {
-    if (payload[key]) return String(payload[key]).trim();
-  }
-  // Try nested JotForm "q{n}_" style keys
-  for (const [k, v] of Object.entries(payload)) {
-    const lower = k.toLowerCase();
-    for (const search of keys) {
-      if (lower.includes(search.toLowerCase())) {
-        if (typeof v === "object" && v !== null) {
-          // JotForm name fields: { first: "...", last: "..." }
-          if ("first" in v) return String(v.first || "").trim();
-          return Object.values(v).filter(Boolean).join(" ").trim();
-        }
-        return String(v).trim();
-      }
-    }
-  }
-  return "";
-}
-
-function extractName(payload: Record<string, any>, part: "first" | "last"): string {
-  // Look for explicit first_name / last_name
-  const direct = part === "first"
-    ? extractField(payload, "first_name", "firstName")
-    : extractField(payload, "last_name", "lastName");
-  if (direct) return direct;
-
-  // JotForm sends name fields as objects with { first, last }
-  for (const [, v] of Object.entries(payload)) {
-    if (typeof v === "object" && v !== null && "first" in v && "last" in v) {
-      return String(v[part] || "").trim();
-    }
-  }
-
-  // Fallback: split a "name" field
-  const full = extractField(payload, "name", "fullName", "full_name");
-  if (full) {
-    const parts = full.split(" ");
-    return part === "first" ? parts[0] : parts.slice(1).join(" ");
-  }
-  return "";
-}
-
 Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    let payload: Record<string, any>;
-
+    // JotForm sends data as application/x-www-form-urlencoded
     const contentType = req.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      payload = await req.json();
-    } else {
-      // JotForm sends x-www-form-urlencoded by default
-      const text = await req.text();
-      const params = new URLSearchParams(text);
-      payload = Object.fromEntries(params.entries());
+    let formData: Record<string, string> = {};
 
-      // JotForm sometimes sends rawRequest as JSON string
-      if (payload.rawRequest) {
-        try {
-          const raw = JSON.parse(payload.rawRequest);
-          payload = { ...payload, ...raw };
-        } catch {
-          // ignore parse errors on rawRequest
-        }
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const body = await req.text();
+      const params = new URLSearchParams(body);
+      for (const [key, value] of params.entries()) {
+        formData[key] = value;
+      }
+    } else if (contentType.includes("application/json")) {
+      formData = await req.json();
+    } else {
+      // Try form-urlencoded as default (JotForm's standard)
+      const body = await req.text();
+      const params = new URLSearchParams(body);
+      for (const [key, value] of params.entries()) {
+        formData[key] = value;
       }
     }
 
-    const email = extractField(payload, "email", "Email", "emailAddress").toLowerCase();
+    // Extract fields from JotForm's flat key format
+    // JotForm sends fields like q3_fullName[first], q3_fullName[last], q5_email, q7_phoneNumber[full], etc.
+    // The exact field IDs depend on the form — we'll parse common patterns
+    const rawJson = JSON.stringify(formData);
+
+    // Find email (look for keys containing "email")
+    let email = "";
+    let firstName = "";
+    let lastName = "";
+    let phone = "";
+    let emergencyContact = "";
+    let submissionId = formData["submissionID"] || formData["submission_id"] || "";
+
+    for (const [key, value] of Object.entries(formData)) {
+      const keyLower = key.toLowerCase();
+
+      if (keyLower.includes("email") && value && !email) {
+        email = value.trim().toLowerCase();
+      }
+      if ((keyLower.includes("name") && keyLower.includes("[first]")) || keyLower === "first_name") {
+        firstName = value.trim();
+      }
+      if ((keyLower.includes("name") && keyLower.includes("[last]")) || keyLower === "last_name") {
+        lastName = value.trim();
+      }
+      if ((keyLower.includes("phone") && keyLower.includes("[full]")) || keyLower === "phone") {
+        phone = value.trim();
+      }
+      if (keyLower.includes("emergency")) {
+        emergencyContact = value.trim();
+      }
+    }
+
     if (!email) {
+      console.error("No email found in submission:", rawJson);
       return new Response(
         JSON.stringify({ error: "No email found in submission" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const firstName = extractName(payload, "first");
-    const lastName = extractName(payload, "last");
-    const phone = extractField(payload, "phone", "phoneNumber", "phone_number");
-    const emergencyContact = extractField(payload, "emergency_contact", "emergencyContact", "emergency");
-    const licensePlate = extractField(payload, "license_plate", "licensePlate", "license") || null;
-    const address = extractField(payload, "address", "streetAddress", "street_address") || null;
-    const dob = extractField(payload, "date_of_birth", "dateOfBirth", "dob", "birthday") || null;
-    const photoUrl = extractField(payload, "photo_url", "photoUrl", "photo", "profilePhoto") || null;
-    const referralSource = extractField(payload, "referral_source", "referralSource", "referral", "howDidYouHear") || null;
-    const submissionId = extractField(payload, "submissionID", "submission_id", "formID") || null;
-
-    const waiverRaw = extractField(payload, "waiver", "waiverSigned", "waiver_signed", "liability");
-    const waiverSigned = ["yes", "true", "1", "signed", "agreed"].includes(waiverRaw.toLowerCase());
-
+    // Connect to Supabase with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { error } = await supabase.from("jotform_submissions").upsert(
-      {
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        emergency_contact: emergencyContact,
-        license_plate: licensePlate,
-        address,
-        date_of_birth: dob,
-        photo_url: photoUrl,
-        referral_source: referralSource,
-        waiver_signed: waiverSigned,
-        waiver_signed_at: waiverSigned ? new Date().toISOString() : null,
-        pma_agreed: true,
-        pma_agreed_at: new Date().toISOString(),
-        jotform_submission_id: submissionId,
-        raw_payload: payload,
-      },
-      { onConflict: "jotform_submission_id", ignoreDuplicates: false }
-    );
+    // Upsert into jotform_submissions (update if same email resubmits)
+    const { data, error } = await supabase
+      .from("jotform_submissions")
+      .upsert(
+        {
+          submission_id: submissionId,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          emergency_contact: emergencyContact,
+          raw_data: formData,
+          submitted_at: new Date().toISOString(),
+          claimed: false,
+        },
+        { onConflict: "submission_id" }
+      )
+      .select();
 
     if (error) {
-      console.error("Upsert error:", error);
+      console.error("Supabase insert error:", error);
       return new Response(
         JSON.stringify({ error: error.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log("JotForm submission stored:", email, submissionId);
+
     return new Response(
-      JSON.stringify({ success: true, email }),
+      JSON.stringify({ success: true, email, submission_id: submissionId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
