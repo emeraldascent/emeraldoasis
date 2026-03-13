@@ -12,8 +12,7 @@ import { Button } from '../ui/button';
 import { supabase } from '../../lib/supabase';
 import { matchJotformAndCreateMember } from '../../hooks/useJotformMatch';
 
-const LOGO_URL =
-  '/ea-logo.jpg';
+const LOGO_URL = '/ea-logo.jpg';
 
 interface LoginModalProps {
   open: boolean;
@@ -167,13 +166,15 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       <DialogContent className="max-w-sm mx-auto rounded-xl">
         <DialogHeader>
           <div className="flex flex-col items-center gap-2 mb-1">
-            <img
-              src={LOGO_URL}
-              alt="Emerald Oasis"
-              className="w-14 h-14 rounded-full object-cover"
-            />
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--ea-birch)] flex items-center justify-center p-1.5 border border-gray-100 shadow-sm">
+              <img
+                src={LOGO_URL}
+                alt="Emerald Oasis"
+                className="w-full h-full object-cover mix-blend-multiply rounded-full"
+              />
+            </div>
             <DialogTitle
-              className="text-center text-lg"
+              className="text-center text-lg mt-1"
               style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
                 color: 'var(--ea-midnight)',
@@ -235,7 +236,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                   type="email"
                   value={email}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 text-gray-500"
                 />
               </div>
               <div className="space-y-2">
@@ -281,7 +282,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                   type="email"
                   value={email}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 text-gray-500"
                 />
               </div>
               <div className="space-y-2">
@@ -319,7 +320,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                   type="email"
                   value={email}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 text-gray-500"
                 />
               </div>
               <Button
