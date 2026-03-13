@@ -44,10 +44,20 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       return;
     }
 
-    onOpenChange(false);
-    setEmail('');
-    setPassword('');
-    navigate('/dashboard');
+    // Check for JotForm PMA submission match and auto-create member
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const created = await matchJotformAndCreateMember(authUser.id, authUser.email || email);
+      onOpenChange(false);
+      setEmail('');
+      setPassword('');
+      navigate(created ? '/welcome' : '/dashboard');
+    } else {
+      onOpenChange(false);
+      setEmail('');
+      setPassword('');
+      navigate('/dashboard');
+    }
   };
 
   return (
