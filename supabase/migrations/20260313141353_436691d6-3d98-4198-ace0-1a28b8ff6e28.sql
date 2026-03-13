@@ -1,0 +1,1 @@
+ALTER TABLE public.jotform_submissions ADD COLUMN IF NOT EXISTS membership_tier text DEFAULT NULL;
