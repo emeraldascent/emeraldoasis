@@ -22,6 +22,7 @@ function AppContent() {
         {/* Public routes */}
         <Route path="/" element={<Welcome />} />
         <Route path="/join" element={<Join />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Public — useful for everyone */}
         <Route
