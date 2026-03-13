@@ -74,7 +74,7 @@ export function Join() {
         </div>
       </div>
 
-      {/* JotForm iframe */}
+      {/* JotForm iframe - We completely REMOVE the sandbox attribute to let JotForm control its own environment */}
       <div className="flex-1 w-full bg-gray-50 relative">
         <iframe
           id="JotFormIFrame-251564463545057"
@@ -84,7 +84,6 @@ export function Join() {
           style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
           allowFullScreen={true}
           allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write; display-capture"
-          sandbox="allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-same-origin"
         />
       </div>
 
