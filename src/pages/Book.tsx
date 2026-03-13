@@ -1,9 +1,33 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock } from 'lucide-react';
+import { Lock, ArrowLeft, Sun, Tent, Users, Clock } from 'lucide-react';
 import type { Member, BadgeStatus } from '../lib/types';
 
-const SIMPLYBOOK_URL = 'https://emeraldoasiscamp.simplybook.me/v2/';
+const SIMPLYBOOK_BASE = 'https://emeraldoasiscamp.simplybook.me/v2/#book/service';
+
+interface ServiceCard {
+  id: number;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const DAY_PASSES: ServiceCard[] = [
+  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, market access', icon: <Clock size={18} /> },
+  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit with sauna access', icon: <Sun size={18} /> },
+  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day experience', icon: <Sun size={18} /> },
+];
+
+const CAMPSITES: ServiceCard[] = [
+  { id: 11, name: 'Campsite 3', description: 'Creekside primitive site', icon: <Tent size={18} /> },
+  { id: 12, name: 'Campsite 4', description: 'Wooded primitive site', icon: <Tent size={18} /> },
+  { id: 13, name: 'Campsite 5', description: 'Wooded primitive site', icon: <Tent size={18} /> },
+  { id: 14, name: 'Campsite 6', description: 'Wooded primitive site', icon: <Tent size={18} /> },
+  { id: 9, name: 'Campsite 7 — Social', description: 'Open social campsite', icon: <Tent size={18} /> },
+  { id: 8, name: 'Campsite 7 — Group Reserve', description: 'Full group reservation', icon: <Users size={18} /> },
+  { id: 10, name: 'Creekside Group #2', description: 'Group creekside camping', icon: <Users size={18} /> },
+];
 
 interface BookProps {
   member: Member | null;
@@ -12,6 +36,7 @@ interface BookProps {
 
 export function Book({ member, badgeStatus }: BookProps) {
   const navigate = useNavigate();
+  const [selectedService, setSelectedService] = useState<ServiceCard | null>(null);
   const isActive = badgeStatus === 'active';
 
   if (!member) {
@@ -25,7 +50,6 @@ export function Book({ member, badgeStatus }: BookProps) {
     );
   }
 
-  // Expired / future — lock screen
   if (!isActive) {
     const expDate = new Date(member.membership_end).toLocaleDateString('en-US', {
       month: 'long',
@@ -71,14 +95,48 @@ export function Book({ member, badgeStatus }: BookProps) {
     );
   }
 
-  // Active — embedded SimplyBook
+  // SimplyBook iframe view for selected service
+  if (selectedService) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
+        <div className="bg-white px-4 py-3 border-b border-gray-100">
+          <div className="max-w-md mx-auto flex items-center gap-3">
+            <button
+              onClick={() => setSelectedService(null)}
+              className="p-1 -ml-1 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeft size={20} style={{ color: 'var(--ea-midnight)' }} />
+            </button>
+            <h1
+              className="text-base"
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                color: 'var(--ea-midnight)',
+              }}
+            >
+              {selectedService.name}
+            </h1>
+          </div>
+        </div>
+        <iframe
+          src={`${SIMPLYBOOK_BASE}/${selectedService.id}`}
+          title={`Book ${selectedService.name}`}
+          className="flex-1 w-full border-0"
+          style={{ minHeight: 'calc(100vh - 120px)' }}
+          allow="payment"
+        />
+      </div>
+    );
+  }
+
+  // Service card grid
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
-      {/* Header */}
-      <div className="bg-white px-4 py-3 border-b border-gray-100">
-        <div className="max-w-md mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="max-w-md mx-auto px-4 py-5 space-y-6">
+        {/* Header */}
+        <div className="text-center">
           <h1
-            className="text-base"
+            className="text-lg mb-1"
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               color: 'var(--ea-midnight)',
@@ -86,26 +144,89 @@ export function Book({ member, badgeStatus }: BookProps) {
           >
             Book an Experience
           </h1>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">
-              {member.first_name} {member.last_name}
-            </span>
-            <span
-              className="w-2.5 h-2.5 rounded-full inline-block"
-              style={{ backgroundColor: '#22C55E' }}
-            />
+          <p className="text-xs text-gray-400">
+            Welcome back, {member.first_name}
+          </p>
+        </div>
+
+        {/* Day Passes */}
+        <div>
+          <h2
+            className="text-sm font-semibold mb-3 flex items-center gap-2"
+            style={{ color: 'var(--ea-midnight)' }}
+          >
+            <Sun size={16} style={{ color: 'var(--ea-emerald)' }} />
+            Day Passes
+          </h2>
+          <div className="space-y-2">
+            {DAY_PASSES.map((service) => (
+              <button
+                key={service.id}
+                onClick={() => setSelectedService(service)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+                >
+                  {service.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                    {service.name}
+                  </p>
+                  <p className="text-[11px] text-gray-400">{service.description}</p>
+                </div>
+                <span
+                  className="text-xs font-semibold shrink-0"
+                  style={{ color: 'var(--ea-emerald)' }}
+                >
+                  Book →
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Campsites */}
+        <div>
+          <h2
+            className="text-sm font-semibold mb-3 flex items-center gap-2"
+            style={{ color: 'var(--ea-midnight)' }}
+          >
+            <Tent size={16} style={{ color: 'var(--ea-emerald)' }} />
+            Campsites
+          </h2>
+          <div className="space-y-2">
+            {CAMPSITES.map((service) => (
+              <button
+                key={service.id}
+                onClick={() => setSelectedService(service)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+                >
+                  {service.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                    {service.name}
+                  </p>
+                  <p className="text-[11px] text-gray-400">{service.description}</p>
+                </div>
+                <span
+                  className="text-xs font-semibold shrink-0"
+                  style={{ color: 'var(--ea-emerald)' }}
+                >
+                  Book →
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* SimplyBook iframe */}
-      <iframe
-        src={SIMPLYBOOK_URL}
-        title="Book an Experience — SimplyBook"
-        className="flex-1 w-full border-0"
-        style={{ minHeight: 'calc(100vh - 120px)' }}
-        allow="payment"
-      />
     </div>
   );
 }
