@@ -1,9 +1,8 @@
 import { Button } from '../ui/button';
 
-const SIMPLYBOOK_URL = 'https://emeraldoasiscamp.simplybook.me/v2/';
-
 interface BookingGridProps {
   disabled?: boolean;
+  onBook?: () => void;
 }
 
 const bookings = [
@@ -13,10 +12,10 @@ const bookings = [
   { emoji: '📅', label: 'Events' },
 ];
 
-export function BookingGrid({ disabled = false }: BookingGridProps) {
+export function BookingGrid({ disabled = false, onBook }: BookingGridProps) {
   const handleBook = () => {
-    if (!disabled) {
-      window.open(SIMPLYBOOK_URL, '_blank', 'noopener,noreferrer');
+    if (!disabled && onBook) {
+      onBook();
     }
   };
 

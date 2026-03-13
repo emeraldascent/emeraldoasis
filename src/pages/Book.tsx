@@ -1,99 +1,111 @@
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { Lock } from 'lucide-react';
+import type { Member, BadgeStatus } from '../lib/types';
 
 const SIMPLYBOOK_URL = 'https://emeraldoasiscamp.simplybook.me/v2/';
 
-const experiences = [
-  {
-    emoji: '🥾',
-    title: 'Oasis Day Pass',
-    description: 'Hiking, swimming, gardens & zen lounge',
-    pricing: '2hr / 4hr / 8hr blocks',
-    color: 'var(--ea-emerald)',
-    bg: '#F0FDF4',
-  },
-  {
-    emoji: '🔥',
-    title: 'Sauna & Cold Plunge',
-    description: 'Wood-fire & electric sauna + Mineral Creek plunge',
-    pricing: 'Electric: $60/hr · Wood-fire: $40/2hrs',
-    color: 'var(--ea-spirulina)',
-    bg: '#F0FDFA',
-  },
-  {
-    emoji: '🏕️',
-    title: 'Camping',
-    description: 'Primitive sites along Mineral Creek in the forest',
-    pricing: 'Sites 2–8, Zome, and Yome available',
-    color: 'var(--ea-sage)',
-    bg: '#F1F5F0',
-  },
-  {
-    emoji: '📅',
-    title: 'Events & Classes',
-    description: 'Yoga, workshops, and community gatherings',
-    pricing: 'Check schedule for upcoming events',
-    color: 'var(--ea-lilac)',
-    bg: '#EDEEF8',
-  },
-];
+interface BookProps {
+  member: Member | null;
+  badgeStatus: BadgeStatus;
+}
 
-export function Book() {
-  const handleBook = () => {
-    window.open(SIMPLYBOOK_URL, '_blank', 'noopener,noreferrer');
-  };
+export function Book({ member, badgeStatus }: BookProps) {
+  const navigate = useNavigate();
+  const isActive = badgeStatus === 'active';
 
+  if (!member) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <span className="text-4xl block mb-3">🌿</span>
+          <p className="text-sm text-gray-500">Loading membership...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Expired / future — lock screen
+  if (!isActive) {
+    const expDate = new Date(member.membership_end).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6 pb-24">
+        <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-sm border border-red-100 text-center space-y-4">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+            style={{ backgroundColor: '#FEF2F2' }}
+          >
+            <Lock size={28} className="text-red-500" />
+          </div>
+          <div>
+            <h2
+              className="text-base font-semibold mb-1"
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                color: 'var(--ea-midnight)',
+              }}
+            >
+              Booking Unavailable
+            </h2>
+            <p className="text-sm text-red-600 font-medium">
+              Your membership expired on {expDate}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Renew your membership to book experiences
+            </p>
+          </div>
+          <Button
+            onClick={() => navigate('/join')}
+            className="w-full h-11 text-white font-medium rounded-lg"
+            style={{ backgroundColor: 'var(--ea-emerald)' }}
+          >
+            Renew Membership
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Active — embedded SimplyBook
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="max-w-md mx-auto px-4 py-5 space-y-4">
-        <div className="text-center mb-2">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
+      {/* Header */}
+      <div className="bg-white px-4 py-3 border-b border-gray-100">
+        <div className="max-w-md mx-auto flex items-center justify-between">
           <h1
-            className="text-lg mb-1"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--ea-midnight)' }}
+            className="text-base"
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              color: 'var(--ea-midnight)',
+            }}
           >
             Book an Experience
           </h1>
-          <p className="text-xs text-gray-500">
-            All experiences require advance booking
-          </p>
-        </div>
-
-        {experiences.map((exp) => (
-          <div
-            key={exp.title}
-            className="rounded-2xl border overflow-hidden"
-            style={{ backgroundColor: exp.bg, borderColor: '#E5E7EB' }}
-          >
-            <div className="p-4">
-              <div className="flex items-start gap-3">
-                <span className="text-3xl">{exp.emoji}</span>
-                <div className="flex-1">
-                  <h3
-                    className="text-sm font-bold mb-0.5"
-                    style={{ color: 'var(--ea-midnight)', fontFamily: 'Inter, sans-serif' }}
-                  >
-                    {exp.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-1">{exp.description}</p>
-                  <p className="text-[11px] font-medium" style={{ color: exp.color }}>
-                    {exp.pricing}
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={handleBook}
-                className="w-full mt-3 text-white rounded-lg h-10"
-                style={{ backgroundColor: exp.color }}
-              >
-                Book Now →
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">
+              {member.first_name} {member.last_name}
+            </span>
+            <span
+              className="w-2.5 h-2.5 rounded-full inline-block"
+              style={{ backgroundColor: '#22C55E' }}
+            />
           </div>
-        ))}
-
-        <p className="text-[10px] text-center text-gray-400 pt-2">
-          Booking powered by SimplyBook · Camping includes Oasis Pass access
-        </p>
+        </div>
       </div>
+
+      {/* SimplyBook iframe */}
+      <iframe
+        src={SIMPLYBOOK_URL}
+        title="Book an Experience — SimplyBook"
+        className="flex-1 w-full border-0"
+        style={{ minHeight: 'calc(100vh - 120px)' }}
+        allow="payment"
+      />
     </div>
   );
 }

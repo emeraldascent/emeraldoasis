@@ -2,21 +2,44 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { LoginModal } from '../components/auth/LoginModal';
+import { useMember } from '../hooks/useMember';
+
+const LOGO_URL =
+  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
+const HERO_BG =
+  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/DSC00078_1749760850.JPG';
 
 export function Welcome() {
   const navigate = useNavigate();
+  const { user } = useMember();
   const [loginOpen, setLoginOpen] = useState(false);
+
+  const handleBook = () => {
+    if (user) {
+      navigate('/book');
+    } else {
+      setLoginOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero */}
+      {/* Hero with background image */}
       <div
-        className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+        className="flex-1 flex flex-col items-center justify-center px-6 py-16 relative"
         style={{
-          background: 'linear-gradient(160deg, var(--ea-emerald) 0%, var(--ea-spirulina) 100%)',
+          backgroundImage: `linear-gradient(160deg, rgba(19,105,75,0.85) 0%, rgba(40,140,111,0.85) 100%), url("${HERO_BG}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
-        <span className="text-[32px] mb-3">🌿</span>
+        {/* Logo */}
+        <img
+          src={LOGO_URL}
+          alt="Emerald Oasis"
+          className="w-28 h-28 rounded-full object-cover mb-4 border-2 border-white/30 shadow-lg"
+        />
+
         <h1
           className="text-[22px] text-white text-center mb-2"
           style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
@@ -36,27 +59,20 @@ export function Welcome() {
             Become a Member
           </Button>
           <Button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => setLoginOpen(true)}
             className="w-full h-12 font-medium rounded-lg"
             style={{ backgroundColor: 'white', color: 'var(--ea-midnight)' }}
           >
-            Member Dashboard
+            Sign In
           </Button>
           <Button
-            onClick={() => navigate('/book')}
+            onClick={handleBook}
             className="w-full h-12 text-white font-medium rounded-lg"
             style={{ backgroundColor: 'var(--ea-spirulina)' }}
           >
             Book an Experience
           </Button>
         </div>
-
-        <button
-          onClick={() => setLoginOpen(true)}
-          className="mt-6 text-white/80 text-xs underline underline-offset-2 hover:text-white transition-colors"
-        >
-          Sign In
-        </button>
       </div>
 
       {/* Bottom info */}
@@ -69,6 +85,12 @@ export function Welcome() {
             All visitors must be active members. Membership starts at $2/visit.
           </p>
         </div>
+        <button
+          onClick={() => navigate('/admin')}
+          className="text-[10px] text-gray-300 hover:text-gray-500 transition-colors"
+        >
+          Staff Login
+        </button>
       </div>
 
       <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />

@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useMember } from './hooks/useMember';
-import { useAdmin } from './hooks/useAdmin';
 import { AuthGuard } from './components/auth/AuthGuard';
-import { AdminGuard } from './components/auth/AdminGuard';
 import { BottomNav } from './components/layout/BottomNav';
 import { Welcome } from './pages/Welcome';
 import { Join } from './pages/Join';
@@ -15,73 +13,70 @@ import { Admin } from './pages/Admin';
 
 function AppContent() {
   const { user, member, badgeStatus, loading, logout, refreshMember } = useMember();
-  const isAdmin = useAdmin(user);
+  const isAuthenticated = !!user;
 
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<Welcome />} />
-      <Route path="/join" element={<Join />} />
+    <>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Welcome />} />
+        <Route path="/join" element={<Join />} />
 
-      {/* Authenticated routes */}
-      <Route
-        path="/welcome"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <WelcomeConfirmation />
-          </AuthGuard>
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <Dashboard member={member} badgeStatus={badgeStatus} />
-            <BottomNav isAdmin={isAdmin} />
-          </AuthGuard>
-        }
-      />
-      <Route
-        path="/book"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <Book />
-            <BottomNav isAdmin={isAdmin} />
-          </AuthGuard>
-        }
-      />
-      <Route
-        path="/guide"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <Guide />
-            <BottomNav isAdmin={isAdmin} />
-          </AuthGuard>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <Profile member={member} onLogout={logout} onRefresh={refreshMember} />
-            <BottomNav isAdmin={isAdmin} />
-          </AuthGuard>
-        }
-      />
+        {/* Public — useful for everyone */}
+        <Route
+          path="/guide"
+          element={
+            <>
+              <Guide />
+              <BottomNav isAuthenticated={isAuthenticated} />
+            </>
+          }
+        />
 
-      {/* Admin routes */}
-      <Route
-        path="/admin"
-        element={
-          <AuthGuard user={user} loading={loading}>
-            <AdminGuard isAdmin={isAdmin} loading={loading}>
-              <Admin />
-              <BottomNav isAdmin={isAdmin} />
-            </AdminGuard>
-          </AuthGuard>
-        }
-      />
-    </Routes>
+        {/* Authenticated routes */}
+        <Route
+          path="/welcome"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <WelcomeConfirmation member={member} />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <Dashboard member={member} badgeStatus={badgeStatus} />
+              <BottomNav isAuthenticated={isAuthenticated} />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/book"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <Book member={member} badgeStatus={badgeStatus} />
+              <BottomNav isAuthenticated={isAuthenticated} />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <Profile member={member} onLogout={logout} onRefresh={refreshMember} />
+              <BottomNav isAuthenticated={isAuthenticated} />
+            </AuthGuard>
+          }
+        />
+
+        {/* Admin — PIN protected, no AuthGuard required */}
+        <Route
+          path="/admin"
+          element={<Admin userEmail={user?.email} />}
+        />
+      </Routes>
+    </>
   );
 }
 

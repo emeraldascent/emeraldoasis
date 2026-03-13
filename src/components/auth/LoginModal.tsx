@@ -11,6 +11,9 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { supabase } from '../../lib/supabase';
 
+const LOGO_URL =
+  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
+
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,11 +39,13 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     setLoading(false);
 
     if (authError) {
-      setError(authError.message);
+      setError('Invalid email or password');
       return;
     }
 
     onOpenChange(false);
+    setEmail('');
+    setPassword('');
     navigate('/dashboard');
   };
 
@@ -48,16 +53,31 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm mx-auto rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-center text-lg" style={{ color: 'var(--ea-midnight)' }}>
-            Sign In
-          </DialogTitle>
+          <div className="flex flex-col items-center gap-2 mb-1">
+            <img
+              src={LOGO_URL}
+              alt="Emerald Oasis"
+              className="w-14 h-14 rounded-full object-cover"
+            />
+            <DialogTitle
+              className="text-center text-lg"
+              style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                color: 'var(--ea-midnight)',
+              }}
+            >
+              Sign In
+            </DialogTitle>
+          </div>
         </DialogHeader>
+
         <form onSubmit={handleLogin} className="space-y-4 px-1">
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg text-center">
               {error}
             </div>
           )}
+
           <div className="space-y-2">
             <Label htmlFor="login-email">Email</Label>
             <Input
@@ -69,6 +89,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
               required
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="login-password">Password</Label>
             <Input
@@ -80,15 +101,29 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
               required
             />
           </div>
+
           <Button
             type="submit"
-            className="w-full text-white rounded-lg"
+            className="w-full h-11 text-white rounded-lg font-medium"
             style={{ backgroundColor: 'var(--ea-emerald)' }}
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
+
+        <div className="text-center pt-2 pb-1">
+          <button
+            onClick={() => {
+              onOpenChange(false);
+              navigate('/join');
+            }}
+            className="text-xs font-medium"
+            style={{ color: 'var(--ea-spirulina)' }}
+          >
+            Not a member yet? Join here →
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

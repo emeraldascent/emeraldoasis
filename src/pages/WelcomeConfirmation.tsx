@@ -1,17 +1,31 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import type { Member } from '../lib/types';
 
-export function WelcomeConfirmation() {
+const LOGO_URL =
+  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
+
+interface WelcomeConfirmationProps {
+  member: Member | null;
+}
+
+export function WelcomeConfirmation({ member }: WelcomeConfirmationProps) {
   const navigate = useNavigate();
+  const firstName = member?.first_name ?? 'Member';
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12">
-      <span className="text-5xl mb-4">🌿</span>
+      <img
+        src={LOGO_URL}
+        alt="Emerald Oasis"
+        className="w-20 h-20 rounded-full object-cover mb-4 border-2 shadow-md"
+        style={{ borderColor: 'var(--ea-emerald)' }}
+      />
       <h1
         className="text-xl text-center mb-2"
         style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--ea-emerald)' }}
       >
-        Welcome to the Oasis!
+        Welcome to the Oasis, {firstName}!
       </h1>
       <p className="text-xs text-gray-500 text-center mb-8">
         Your membership is active. You're part of the community.

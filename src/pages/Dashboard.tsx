@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { Member, BadgeStatus } from '../lib/types';
 import { MemberBadge } from '../components/dashboard/MemberBadge';
 import { BookingGrid } from '../components/dashboard/BookingGrid';
@@ -5,12 +6,17 @@ import { PropertyStatus } from '../components/dashboard/PropertyStatus';
 import { QuickLinks } from '../components/dashboard/QuickLinks';
 import { Droplets, ShoppingBag, Smartphone } from 'lucide-react';
 
+const LOGO_URL =
+  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
+
 interface DashboardProps {
   member: Member | null;
   badgeStatus: BadgeStatus;
 }
 
 export function Dashboard({ member, badgeStatus }: DashboardProps) {
+  const navigate = useNavigate();
+
   if (!member) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -28,6 +34,24 @@ export function Dashboard({ member, badgeStatus }: DashboardProps) {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
+        {/* Logo header */}
+        <div className="flex items-center justify-center gap-2 pb-1">
+          <img
+            src={LOGO_URL}
+            alt="Emerald Oasis"
+            className="w-8 h-8 rounded-full object-cover"
+          />
+          <span
+            className="text-sm font-semibold"
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              color: 'var(--ea-midnight)',
+            }}
+          >
+            Emerald Oasis
+          </span>
+        </div>
+
         {/* Badge — always above fold */}
         <MemberBadge member={member} badgeStatus={badgeStatus} />
 
@@ -56,20 +80,27 @@ export function Dashboard({ member, badgeStatus }: DashboardProps) {
             </div>
 
             {/* Booking grid */}
-            <BookingGrid />
+            <BookingGrid onBook={() => navigate('/book')} />
           </>
         )}
 
         {/* Expired member content */}
         {isExpired && (
           <>
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-center space-y-2">
               <p className="text-sm font-semibold text-red-700 mb-1">
                 Your membership has expired
               </p>
               <p className="text-xs text-red-500">
                 Renew to access booking and property experiences.
               </p>
+              <button
+                onClick={() => navigate('/join')}
+                className="text-xs font-semibold underline underline-offset-2"
+                style={{ color: 'var(--ea-emerald)' }}
+              >
+                Renew Membership →
+              </button>
             </div>
             <BookingGrid disabled />
           </>

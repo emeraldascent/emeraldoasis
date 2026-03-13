@@ -1,31 +1,35 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, CalendarDays, TreePine, User, Shield } from 'lucide-react';
+import { Home, CalendarDays, TreePine, User, PenLine } from 'lucide-react';
 
 interface BottomNavProps {
-  isAdmin: boolean;
+  isAuthenticated: boolean;
 }
 
-const navItems = [
+const authNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
   { path: '/guide', label: 'Guide', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
-export function BottomNav({ isAdmin }: BottomNavProps) {
+const publicNav = [
+  { path: '/', label: 'Home', icon: Home },
+  { path: '/join', label: 'Join', icon: PenLine },
+  { path: '/book', label: 'Book', icon: CalendarDays },
+  { path: '/guide', label: 'Guide', icon: TreePine },
+];
+
+export function BottomNav({ isAuthenticated }: BottomNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const items = isAdmin
-    ? [...navItems, { path: '/admin', label: 'Admin', icon: Shield }]
-    : navItems;
+  const items = isAuthenticated ? authNav : publicNav;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-safe">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {items.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path === '/admin' && location.pathname.startsWith('/admin'));
+          const isActive = location.pathname === item.path;
           const Icon = item.icon;
 
           return (
