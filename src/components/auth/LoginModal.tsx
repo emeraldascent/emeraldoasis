@@ -145,7 +145,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         membership_start: now.toISOString(),
         membership_end: thirtyDaysLater.toISOString(),
         pma_agreed: true,
-        pma_agreed_at: jotformData?.submitted_at || now.toISOString(),
+        pma_agreed_at: jotformData?.pma_agreed_at || jotformData?.created_at || now.toISOString(),
         source: jotformData ? 'jotform' : 'app',
       });
 
