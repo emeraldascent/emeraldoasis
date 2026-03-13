@@ -1,27 +1,37 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LoginModal } from '../components/auth/LoginModal';
 
 const LOGO_URL = '/ea-logo.jpg';
 
 export function Join() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loginOpen, setLoginOpen] = useState(false);
   const [showRedirectNotice, setShowRedirectNotice] = useState(false);
 
   useEffect(() => {
-    // Listen for JotForm's postMessage when the form is submitted
+    // Check if we came back from a redirect (JotForm external redirect fallback)
+    const params = new URLSearchParams(location.search);
+    if (params.get('completed') === 'true') {
+      setShowRedirectNotice(true);
+      setTimeout(() => {
+        setLoginOpen(true);
+      }, 500);
+    }
+
+    // Listen for JotForm's postMessage when the form is submitted inline
     const handleMessage = (event: MessageEvent) => {
       if (typeof event.data === 'string' && event.data.includes('setHeight')) {
         return;
       }
       
-      // If the form completes and shows a thank you page
+      // If the form completes and shows a thank you page inline
       if (event.data === 'formCompleted' || event.data?.action === 'submission-completed') {
         setShowRedirectNotice(true);
         setTimeout(() => {
           setLoginOpen(true);
-        }, 1000);
+        }, 1500);
       }
     };
 
@@ -47,7 +57,7 @@ export function Join() {
         document.body.removeChild(script);
       }
     };
-  }, []);
+  }, [location.search]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -126,7 +136,7 @@ export function Join() {
         </button>
       </div>
 
-      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
+      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} defaultMode={showRedirectNotice ? 'email_check' : undefined} defaultEmail="" />
     </div>
   );
 }

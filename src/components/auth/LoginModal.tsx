@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -17,39 +17,43 @@ const LOGO_URL = '/ea-logo.jpg';
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultMode?: AuthMode;
+  defaultEmail?: string;
 }
 
 type AuthMode = 'email_check' | 'login' | 'claim' | 'reset';
 
-export function LoginModal({ open, onOpenChange }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', defaultEmail = '' }: LoginModalProps) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<AuthMode>('email_check');
+  const [mode, setMode] = useState<AuthMode>(defaultMode);
 
-  const checkEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (open) {
+      setMode(defaultMode);
+      if (defaultEmail) setEmail(defaultEmail);
+    }
+  }, [open, defaultMode, defaultEmail]);
+
+  const checkEmail = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!email) return;
     setError('');
     setLoading(true);
 
     try {
-      // 1. Check if they have an active Supabase user account via an RPC or sign-in attempt
-      // We'll do a dummy sign in with a bad password to see if the user exists
       const { error: dummyError } = await supabase.auth.signInWithPassword({
         email,
         password: 'dummy-password-check-12345',
       });
 
       if (dummyError && dummyError.message.includes('Invalid login credentials')) {
-        // The user exists in Supabase (has an account). They just need to enter their password.
         setMode('login');
       } else {
-        // The user likely doesn't exist in Supabase auth yet.
-        // Let's check if they exist in JotForm submissions to claim.
         const { data: jotformMatch } = await supabase
           .from('jotform_submissions')
           .select('id')
@@ -57,10 +61,8 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
           .maybeSingle();
 
         if (jotformMatch) {
-          // Found JotForm! They can set a password to claim it.
           setMode('claim');
         } else {
-          // No Supabase user, no JotForm submission. They need to sign up.
           setError("We couldn't find a membership for this email.");
         }
       }
@@ -88,7 +90,6 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       return;
     }
 
-    // Login successful
     if (authData.user) {
       const created = await matchJotformAndCreateMember(authData.user.id, authData.user.email || email);
       setLoading(false);
