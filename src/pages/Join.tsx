@@ -7,21 +7,23 @@ const LOGO_URL = '/ea-logo.jpg';
 export function Join() {
   const navigate = useNavigate();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [showRedirectNotice, setShowRedirectNotice] = useState(false);
 
   useEffect(() => {
     // Listen for JotForm's postMessage when the form is submitted
     const handleMessage = (event: MessageEvent) => {
       // JotForm sends messages to the parent window
       if (typeof event.data === 'string' && event.data.includes('setHeight')) {
-        // This is just a height resize message, ignore it
         return;
       }
       
       // If the form redirects or completes, JotForm sometimes sends a specific message
-      // But more reliably, we can look for specific submission confirmation events
-      if (event.data === 'formCompleted' || event.data.action === 'submission-completed') {
-        // Optionally auto-redirect them or open the login modal
-        console.log('JotForm submission completed');
+      if (event.data === 'formCompleted' || event.data?.action === 'submission-completed') {
+        setShowRedirectNotice(true);
+        // Automatically open the login modal after a short delay so they can claim their account
+        setTimeout(() => {
+          setLoginOpen(true);
+        }, 1500);
       }
     };
 
@@ -74,18 +76,40 @@ export function Join() {
         </div>
       </div>
 
-      {/* JotForm iframe - We completely REMOVE the sandbox attribute to let JotForm control its own environment */}
-      <div className="flex-1 w-full bg-gray-50 relative">
-        <iframe
-          id="JotFormIFrame-251564463545057"
-          title="Emerald Oasis Membership Signup"
-          src="https://form.jotform.com/251564463545057"
-          className="w-full border-0"
-          style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
-          allowFullScreen={true}
-          allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write; display-capture"
-        />
-      </div>
+      {showRedirectNotice ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-gray-50">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--ea-midnight)' }}>
+            Membership Confirmed!
+          </h2>
+          <p className="text-sm text-gray-600 max-w-xs mx-auto">
+            Your PMA is signed and payment is complete. Let's set up your app password so you can access your dashboard.
+          </p>
+          <button 
+            onClick={() => setLoginOpen(true)}
+            className="px-6 py-3 text-white rounded-lg font-medium shadow-sm mt-4"
+            style={{ backgroundColor: 'var(--ea-emerald)' }}
+          >
+            Set Up Account Password
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 w-full bg-gray-50 relative">
+          <iframe
+            id="JotFormIFrame-251564463545057"
+            title="Emerald Oasis Membership Signup"
+            src="https://form.jotform.com/251564463545057?isIframeEmbed=1"
+            className="w-full border-0"
+            style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
+            allowFullScreen={true}
+            allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write; display-capture"
+          />
+        </div>
+      )}
 
       {/* Footer links */}
       <div className="px-4 py-4 border-t border-gray-100 text-center space-y-2 bg-white relative z-10">
