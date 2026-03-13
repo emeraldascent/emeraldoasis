@@ -126,37 +126,8 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
 
     if (signUpData.user) {
-      // Wait for Supabase session to propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Create member record
-      const now = new Date();
-      const thirtyDaysLater = new Date(now);
-      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
-
-      await supabase.from('members').insert({
-        user_id: signUpData.user.id,
-        email: email.toLowerCase(),
-        first_name: jotformData?.first_name || '',
-        last_name: jotformData?.last_name || '',
-        phone: jotformData?.phone || '',
-        emergency_contact: jotformData?.emergency_contact || '',
-        membership_tier: jotformData?.membership_tier || 'monthly',
-        membership_start: now.toISOString(),
-        membership_end: thirtyDaysLater.toISOString(),
-        pma_agreed: true,
-        pma_agreed_at: jotformData?.pma_agreed_at || jotformData?.created_at || now.toISOString(),
-        source: jotformData ? 'jotform' : 'app',
-      });
-
-      // Mark jotform submission as matched
-      if (jotformData?.id) {
-        await supabase
-          .from('jotform_submissions')
-          .update({ matched_member_id: signUpData.user.id })
-          .eq('id', jotformData.id);
-      }
-
+      // Member record creation is handled by useMember hook's matchJotformAndCreateMember
+      // Just close the modal and navigate — the hook will auto-create the member record
       setLoading(false);
       onOpenChange(false);
       resetForm();
