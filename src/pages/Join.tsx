@@ -52,7 +52,7 @@ export function Join() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Branding header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 relative z-10 bg-white">
         <img
           src={LOGO_URL}
           alt="Emerald Oasis"
@@ -75,7 +75,7 @@ export function Join() {
       </div>
 
       {/* JotForm iframe */}
-      <div className="flex-1 w-full bg-gray-50">
+      <div className="flex-1 w-full bg-gray-50 relative">
         <iframe
           id="JotFormIFrame-251564463545057"
           title="Emerald Oasis Membership Signup"
@@ -83,13 +83,13 @@ export function Join() {
           className="w-full border-0"
           style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
           allowFullScreen={true}
-          allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write"
-          sandbox="allow-forms allow-scripts allow-popups allow-top-navigation-by-user-activation allow-same-origin"
+          allow="geolocation; microphone; camera; fullscreen; payment; autoplay; clipboard-write; display-capture"
+          sandbox="allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-same-origin"
         />
       </div>
 
       {/* Footer links */}
-      <div className="px-4 py-4 border-t border-gray-100 text-center space-y-2 bg-white">
+      <div className="px-4 py-4 border-t border-gray-100 text-center space-y-2 bg-white relative z-10">
         <button
           onClick={() => setLoginOpen(true)}
           className="text-xs font-medium block mx-auto hover:underline"
