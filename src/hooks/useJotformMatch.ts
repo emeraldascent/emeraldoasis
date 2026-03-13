@@ -50,7 +50,7 @@ export async function matchJotformAndCreateMember(userId: string, email: string)
     emergency_contact: jotform.emergency_contact || '',
     license_plate: jotform.license_plate,
     photo_url: jotform.photo_url,
-    membership_tier: 'monthly',
+    membership_tier: (jotform as any).membership_tier || 'weekly',
     membership_start: now.toISOString(),
     membership_end: thirtyDaysLater.toISOString(),
     pma_agreed: jotform.pma_agreed ?? true,
