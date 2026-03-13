@@ -4,8 +4,7 @@ import { Button } from '../components/ui/button';
 import { LoginModal } from '../components/auth/LoginModal';
 import { useMember } from '../hooks/useMember';
 
-const LOGO_URL =
-  '/ea-logo.jpg';
+const LOGO_URL = '/ea-logo.jpg';
 const HERO_BG =
   'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/DSC00078_1749760850.JPG';
 
@@ -34,11 +33,13 @@ export function Welcome() {
         }}
       >
         {/* Logo */}
-        <img
-          src={LOGO_URL}
-          alt="Emerald Oasis"
-          className="w-28 h-28 rounded-full object-cover mb-4 border-2 border-white/30 shadow-lg"
-        />
+        <div className="w-28 h-28 rounded-full overflow-hidden bg-[var(--ea-birch)] mb-4 border-2 border-white/30 shadow-lg flex items-center justify-center p-1">
+          <img
+            src={LOGO_URL}
+            alt="Emerald Oasis"
+            className="w-full h-full object-cover rounded-full mix-blend-multiply"
+          />
+        </div>
 
         <h1
           className="text-[22px] text-white text-center mb-2"

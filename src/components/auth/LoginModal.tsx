@@ -10,70 +10,61 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { supabase } from '../../lib/supabase';
-import { matchJotformAndCreateMember } from '../../hooks/useJotformMatch';
 
 const LOGO_URL = '/ea-logo.jpg';
 
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultMode?: AuthMode;
-  defaultEmail?: string;
+  postJotform?: boolean;
 }
 
-type AuthMode = 'email_check' | 'login' | 'claim' | 'reset';
+type AuthMode = 'email_check' | 'login' | 'create_account' | 'reset';
 
-export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', defaultEmail = '' }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange, postJotform = false }: LoginModalProps) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(defaultEmail);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const [mode, setMode] = useState<AuthMode>(postJotform ? 'create_account' : 'email_check');
 
   useEffect(() => {
     if (open) {
-      setMode(defaultMode);
-      if (defaultEmail) setEmail(defaultEmail);
+      setMode(postJotform ? 'create_account' : 'email_check');
     }
-  }, [open, defaultMode, defaultEmail]);
+  }, [open, postJotform]);
 
-  const checkEmail = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Step 1: Check email — does this person have a Supabase auth account?
+  const checkEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!email) return;
     setError('');
     setLoading(true);
 
     try {
+      // Try to sign in with a dummy password to see if the user exists
       const { error: dummyError } = await supabase.auth.signInWithPassword({
         email,
         password: 'dummy-password-check-12345',
       });
 
       if (dummyError && dummyError.message.includes('Invalid login credentials')) {
+        // User EXISTS in Supabase — they have an account, need to enter password
         setMode('login');
       } else {
-        const { data: jotformMatch } = await supabase
-          .from('jotform_submissions')
-          .select('id')
-          .eq('email', email.toLowerCase())
-          .maybeSingle();
-
-        if (jotformMatch) {
-          setMode('claim');
-        } else {
-          setError("We couldn't find a membership for this email.");
-        }
+        // User does NOT exist — let them create an account
+        setMode('create_account');
       }
-    } catch (err: any) {
-      console.error("Email check error:", err);
-      setError("An error occurred checking your email.");
+    } catch {
+      setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Step 2a: Login with existing password
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -86,16 +77,26 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
 
     if (authError) {
       setLoading(false);
-      setError('Invalid password. Please try again or reset your password.');
+      setError('Invalid password. Try again or reset your password.');
       return;
     }
 
     if (authData.user) {
-      const created = await matchJotformAndCreateMember(authData.user.id, authData.user.email || email);
+      // Check if they have a member record; if not, create a basic one
+      const { data: existingMember } = await supabase
+        .from('members')
+        .select('id')
+        .eq('user_id', authData.user.id)
+        .maybeSingle();
+
+      if (!existingMember) {
+        await createBasicMember(authData.user.id, email);
+      }
+
       setLoading(false);
       onOpenChange(false);
       resetForm();
-      navigate(created ? '/welcome' : '/dashboard');
+      navigate(existingMember ? '/dashboard' : '/welcome');
     } else {
       setLoading(false);
       onOpenChange(false);
@@ -104,7 +105,8 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
     }
   };
 
-  const handleClaim = async (e: React.FormEvent) => {
+  // Step 2b: Create new account (used after JotForm completion OR for new users)
+  const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -115,23 +117,56 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
     });
 
     if (signUpError) {
+      // If user already exists, switch to login mode
+      if (signUpError.message.includes('already registered')) {
+        setLoading(false);
+        setMode('login');
+        setPassword('');
+        setError('An account with this email already exists. Please enter your password.');
+        return;
+      }
       setLoading(false);
-      setError(signUpError.message || 'Error creating account. Please try again.');
+      setError(signUpError.message || 'Error creating account.');
       return;
     }
 
     if (signUpData.user) {
       await new Promise(resolve => setTimeout(resolve, 500));
-      const created = await matchJotformAndCreateMember(signUpData.user.id, email);
+      await createBasicMember(signUpData.user.id, email);
       setLoading(false);
       onOpenChange(false);
       resetForm();
-      navigate(created ? '/welcome' : '/dashboard');
+      navigate('/welcome');
     } else {
       setLoading(false);
     }
   };
 
+  // Create a basic member record directly (no jotform_submissions lookup needed)
+  const createBasicMember = async (userId: string, memberEmail: string) => {
+    const now = new Date();
+    const thirtyDaysLater = new Date(now);
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+
+    await supabase.from('members').insert({
+      user_id: userId,
+      email: memberEmail.toLowerCase(),
+      first_name: '',
+      last_name: '',
+      phone: '',
+      emergency_contact: '',
+      license_plate: null,
+      photo_url: null,
+      membership_tier: 'monthly',
+      membership_start: now.toISOString(),
+      membership_end: thirtyDaysLater.toISOString(),
+      pma_agreed: true,
+      pma_agreed_at: now.toISOString(),
+      source: 'app',
+    });
+  };
+
+  // Password reset
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -154,7 +189,7 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
   const resetForm = () => {
     setEmail('');
     setPassword('');
-    setMode('email_check');
+    setMode(postJotform ? 'create_account' : 'email_check');
     setError('');
     setSuccess('');
   };
@@ -183,7 +218,7 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
             >
               {mode === 'email_check' && 'Find Your Account'}
               {mode === 'login' && 'Welcome Back'}
-              {mode === 'claim' && 'Set Up Your Account'}
+              {mode === 'create_account' && 'Create Your Account'}
               {mode === 'reset' && 'Reset Password'}
             </DialogTitle>
           </div>
@@ -201,6 +236,7 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
             </div>
           )}
 
+          {/* EMAIL CHECK MODE */}
           {mode === 'email_check' && (
             <form onSubmit={checkEmail} className="space-y-4">
               <p className="text-sm text-gray-500 text-center mb-2">
@@ -228,17 +264,12 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
             </form>
           )}
 
+          {/* LOGIN MODE */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  value={email}
-                  disabled
-                  className="bg-gray-50 text-gray-500"
-                />
+                <Input id="login-email" type="email" value={email} disabled className="bg-gray-50 text-gray-500" />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -271,27 +302,29 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
             </form>
           )}
 
-          {mode === 'claim' && (
-            <form onSubmit={handleClaim} className="space-y-4">
-              <div className="text-sm text-green-700 bg-green-50 p-3 rounded-lg text-center mb-2">
-                We found your PMA! Create a password below to set up your app account.
-              </div>
+          {/* CREATE ACCOUNT MODE */}
+          {mode === 'create_account' && (
+            <form onSubmit={handleCreateAccount} className="space-y-4">
+              <p className="text-sm text-gray-500 text-center mb-2">
+                Enter your email and create a password for the app.
+              </p>
               <div className="space-y-2">
-                <Label htmlFor="claim-email">Email</Label>
+                <Label htmlFor="create-email">Email</Label>
                 <Input
-                  id="claim-email"
+                  id="create-email"
                   type="email"
+                  placeholder="you@example.com"
                   value={email}
-                  disabled
-                  className="bg-gray-50 text-gray-500"
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="claim-password">Create Password</Label>
+                <Label htmlFor="create-password">Create Password</Label>
                 <Input
-                  id="claim-password"
+                  id="create-password"
                   type="password"
-                  placeholder="Create your new password"
+                  placeholder="Create your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -304,11 +337,12 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
                 style={{ backgroundColor: 'var(--ea-emerald)' }}
                 disabled={loading}
               >
-                {loading ? 'Creating Account...' : 'Set Password & Enter'}
+                {loading ? 'Creating Account...' : 'Create Account & Enter'}
               </Button>
             </form>
           )}
 
+          {/* RESET MODE */}
           {mode === 'reset' && (
             <form onSubmit={handleReset} className="space-y-4">
               <p className="text-sm text-gray-500 text-center mb-2">
@@ -316,13 +350,7 @@ export function LoginModal({ open, onOpenChange, defaultMode = 'email_check', de
               </p>
               <div className="space-y-2">
                 <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  value={email}
-                  disabled
-                  className="bg-gray-50 text-gray-500"
-                />
+                <Input id="reset-email" type="email" value={email} disabled className="bg-gray-50 text-gray-500" />
               </div>
               <Button
                 type="submit"

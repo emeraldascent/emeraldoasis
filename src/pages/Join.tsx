@@ -8,16 +8,12 @@ export function Join() {
   const navigate = useNavigate();
   const location = useLocation();
   const [loginOpen, setLoginOpen] = useState(false);
-  const [showRedirectNotice, setShowRedirectNotice] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
-    // Check if we came back from a redirect (JotForm external redirect fallback)
     const params = new URLSearchParams(location.search);
     if (params.get('completed') === 'true') {
-      setShowRedirectNotice(true);
-      setTimeout(() => {
-        setLoginOpen(true);
-      }, 500);
+      setShowCompleted(true);
     }
 
     // Listen for JotForm's postMessage when the form is submitted inline
@@ -25,13 +21,8 @@ export function Join() {
       if (typeof event.data === 'string' && event.data.includes('setHeight')) {
         return;
       }
-      
-      // If the form completes and shows a thank you page inline
       if (event.data === 'formCompleted' || event.data?.action === 'submission-completed') {
-        setShowRedirectNotice(true);
-        setTimeout(() => {
-          setLoginOpen(true);
-        }, 1500);
+        setShowCompleted(true);
       }
     };
 
@@ -84,7 +75,7 @@ export function Join() {
         </div>
       </div>
 
-      {showRedirectNotice ? (
+      {showCompleted ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-gray-50">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
             <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,9 +86,9 @@ export function Join() {
             Membership Confirmed!
           </h2>
           <p className="text-sm text-gray-600 max-w-xs mx-auto">
-            Your PMA is signed and payment is complete. Let's set up your app password so you can access your dashboard.
+            Your PMA is signed and payment is complete. Set up your app account below.
           </p>
-          <button 
+          <button
             onClick={() => setLoginOpen(true)}
             className="px-6 py-3 text-white rounded-lg font-medium shadow-sm mt-4"
             style={{ backgroundColor: 'var(--ea-emerald)' }}
@@ -136,7 +127,7 @@ export function Join() {
         </button>
       </div>
 
-      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} defaultMode={showRedirectNotice ? 'email_check' : undefined} defaultEmail="" />
+      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} postJotform={showCompleted} />
     </div>
   );
 }
