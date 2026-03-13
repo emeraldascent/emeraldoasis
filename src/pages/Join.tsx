@@ -1,14 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginModal } from '../components/auth/LoginModal';
 
 const LOGO_URL =
   'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
-const JOTFORM_URL = 'https://form.jotform.com/251564463545057';
 
 export function Join() {
   const navigate = useNavigate();
   const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    // Inject JotForm auto-resize script
+    const script = document.createElement('script');
+    script.src = 'https://form.jotform.com/s/umd/latest/for-form-embed-handler.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      // @ts-ignore
+      if (window.jotformEmbedHandler) {
+        // @ts-ignore
+        window.jotformEmbedHandler("iframe[id='JotFormIFrame-251564463545057']", "https://form.form.com/");
+      }
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -36,21 +55,23 @@ export function Join() {
       </div>
 
       {/* JotForm iframe */}
-      <div className="flex-1">
+      <div className="flex-1 w-full bg-gray-50">
         <iframe
-          src={JOTFORM_URL}
+          id="JotFormIFrame-251564463545057"
           title="Emerald Oasis Membership Signup"
+          src="https://form.jotform.com/251564463545057"
           className="w-full border-0"
-          style={{ minHeight: '80vh', height: '100%' }}
-          allow="geolocation; camera"
+          style={{ minWidth: '100%', maxWidth: '100%', height: '800px', minHeight: '80vh' }}
+          allowFullScreen={true}
+          allow="geolocation; microphone; camera; fullscreen; payment"
         />
       </div>
 
       {/* Footer links */}
-      <div className="px-4 py-4 border-t border-gray-100 text-center space-y-2">
+      <div className="px-4 py-4 border-t border-gray-100 text-center space-y-2 bg-white">
         <button
           onClick={() => setLoginOpen(true)}
-          className="text-xs font-medium block mx-auto"
+          className="text-xs font-medium block mx-auto hover:underline"
           style={{ color: 'var(--ea-emerald)' }}
         >
           Already a member? Sign In
