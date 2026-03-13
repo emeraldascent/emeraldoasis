@@ -9,7 +9,7 @@ import {
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 const LOGO_URL = '/ea-logo.jpg';
 
@@ -158,11 +158,11 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         source: jotformData ? 'jotform' : 'app',
       });
 
-      // Mark jotform submission as claimed
+      // Mark jotform submission as matched
       if (jotformData?.id) {
         await supabase
           .from('jotform_submissions')
-          .update({ claimed: true, claimed_by: signUpData.user.id })
+          .update({ matched_member_id: signUpData.user.id })
           .eq('id', jotformData.id);
       }
 

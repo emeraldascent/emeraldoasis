@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import type { Member, BadgeStatus } from '../lib/types';
 import { matchJotformAndCreateMember } from './useJotformMatch';
 import type { User, Session } from '@supabase/supabase-js';
