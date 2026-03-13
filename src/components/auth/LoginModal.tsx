@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { matchJotformAndCreateMember } from '../../hooks/useJotformMatch';
 
 const LOGO_URL =
-  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/Emerald%20Oasis%20Logo%20%281%29_1769720840.jpg';
+  '/ea-logo.jpg';
 
 interface LoginModalProps {
   open: boolean;
