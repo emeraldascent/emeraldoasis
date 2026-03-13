@@ -62,7 +62,7 @@ export function useMember() {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchMember(session.user.id);
+        fetchMember(session.user.id, session.user.email);
       }
       setLoading(false);
     });
