@@ -26,42 +26,90 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'login' | 'claim'>('login');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    if (mode === 'claim') {
+      // Trying to claim an existing JotForm submission by creating a new account
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      setLoading(false);
+
+      if (signUpError) {
+        setError(signUpError.message || 'Error creating account. Please try again.');
+        return;
+      }
+
+      if (signUpData.user) {
+        const created = await matchJotformAndCreateMember(signUpData.user.id, email);
+        onOpenChange(false);
+        resetForm();
+        navigate(created ? '/welcome' : '/dashboard');
+      }
+      return;
+    }
+
+    // Standard Login Mode
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     if (authError) {
-      setError('Invalid email or password');
+      // If login failed, check if they have a JotForm submission but no auth account
+      const { data: jotformMatch } = await supabase
+        .from('jotform_submissions')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      setLoading(false);
+
+      if (jotformMatch) {
+        // They exist in JotForm but their password failed (likely because they don't have an auth account yet)
+        setMode('claim');
+        setError('We found your PMA! Create a password below to set up your app account.');
+      } else {
+        setError('Invalid email or password');
+      }
       return;
     }
 
-    // Check for JotForm PMA submission match and auto-create member
+    setLoading(false);
+
+    // Login successful
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
       const created = await matchJotformAndCreateMember(authUser.id, authUser.email || email);
       onOpenChange(false);
-      setEmail('');
-      setPassword('');
+      resetForm();
       navigate(created ? '/welcome' : '/dashboard');
     } else {
       onOpenChange(false);
-      setEmail('');
-      setPassword('');
+      resetForm();
       navigate('/dashboard');
     }
   };
 
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setMode('login');
+    setError('');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => {
+      onOpenChange(val);
+      if (!val) resetForm();
+    }}>
       <DialogContent className="max-w-sm mx-auto rounded-xl">
         <DialogHeader>
           <div className="flex flex-col items-center gap-2 mb-1">
@@ -77,14 +125,14 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                 color: 'var(--ea-midnight)',
               }}
             >
-              Sign In
+              {mode === 'login' ? 'Sign In' : 'Claim Your Account'}
             </DialogTitle>
           </div>
         </DialogHeader>
 
         <form onSubmit={handleLogin} className="space-y-4 px-1">
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg text-center">
+            <div className={`text-sm p-3 rounded-lg text-center ${mode === 'claim' ? 'bg-green-50 text-green-700' : 'text-red-600 bg-red-50'}`}>
               {error}
             </div>
           )}
@@ -98,15 +146,16 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={mode === 'claim'}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="login-password">Password</Label>
+            <Label htmlFor="login-password">{mode === 'claim' ? 'Create a Password' : 'Password'}</Label>
             <Input
               id="login-password"
               type="password"
-              placeholder="Your password"
+              placeholder={mode === 'claim' ? 'Create your new password' : 'Your password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -119,22 +168,24 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
             style={{ backgroundColor: 'var(--ea-emerald)' }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (mode === 'login' ? 'Signing in...' : 'Creating Account...') : (mode === 'login' ? 'Sign In' : 'Set Password & Enter')}
           </Button>
         </form>
 
-        <div className="text-center pt-2 pb-1">
-          <button
-            onClick={() => {
-              onOpenChange(false);
-              navigate('/join');
-            }}
-            className="text-xs font-medium"
-            style={{ color: 'var(--ea-spirulina)' }}
-          >
-            Not a member yet? Join here →
-          </button>
-        </div>
+        {mode === 'login' && (
+          <div className="text-center pt-2 pb-1">
+            <button
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/join');
+              }}
+              className="text-xs font-medium"
+              style={{ color: 'var(--ea-spirulina)' }}
+            >
+              Not a member yet? Join here →
+            </button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
