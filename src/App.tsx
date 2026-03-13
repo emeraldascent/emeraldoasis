@@ -10,6 +10,7 @@ import { Book } from './pages/Book';
 import { Guide } from './pages/Guide';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import { ResetPassword } from './pages/ResetPassword';
 
 function AppContent() {
   const { user, member, badgeStatus, loading, logout, refreshMember } = useMember();
@@ -21,6 +22,7 @@ function AppContent() {
         {/* Public routes */}
         <Route path="/" element={<Welcome />} />
         <Route path="/join" element={<Join />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Public — useful for everyone */}
         <Route

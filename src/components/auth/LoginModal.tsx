@@ -166,22 +166,27 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
   };
 
-  // Password reset
+  // Password reset via custom Gmail SMTP edge function
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/dashboard`,
-    });
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('send-reset-email', {
+        body: { email: email.toLowerCase().trim() },
+      });
 
-    setLoading(false);
-    if (resetError) {
+      setLoading(false);
+      if (fnError || data?.error) {
+        setError('Error sending reset link. Please try again.');
+      } else {
+        setSuccess('Check your email for a password reset link.');
+      }
+    } catch {
+      setLoading(false);
       setError('Error sending reset link. Please try again.');
-    } else {
-      setSuccess('Check your email for a password reset link.');
     }
   };
 
