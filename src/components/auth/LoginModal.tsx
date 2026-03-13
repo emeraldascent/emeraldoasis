@@ -19,7 +19,7 @@ interface LoginModalProps {
   postJotform?: boolean;
 }
 
-type AuthMode = 'email_check' | 'login' | 'create_account' | 'reset';
+type AuthMode = 'email_check' | 'login' | 'claim' | 'reset';
 
 export function LoginModal({ open, onOpenChange, postJotform = false }: LoginModalProps) {
   const navigate = useNavigate();
@@ -28,15 +28,16 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<AuthMode>(postJotform ? 'create_account' : 'email_check');
+  const [mode, setMode] = useState<AuthMode>(postJotform ? 'claim' : 'email_check');
+  const [jotformData, setJotformData] = useState<any>(null);
 
   useEffect(() => {
     if (open) {
-      setMode(postJotform ? 'create_account' : 'email_check');
+      setMode(postJotform ? 'claim' : 'email_check');
     }
   }, [open, postJotform]);
 
-  // Step 1: Check email — does this person have a Supabase auth account?
+  // Step 1: Check email — existing account or JotForm submission?
   const checkEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -44,18 +45,36 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     setLoading(true);
 
     try {
-      // Try to sign in with a dummy password to see if the user exists
-      const { error: dummyError } = await supabase.auth.signInWithPassword({
+      // First check if they already have a Supabase account
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password: 'dummy-password-check-12345',
       });
 
-      if (dummyError && dummyError.message.includes('Invalid login credentials')) {
-        // User EXISTS in Supabase — they have an account, need to enter password
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        // Account exists — go to login
         setMode('login');
+        setLoading(false);
+        return;
+      }
+
+      // No account — check jotform_submissions for PMA record
+      const { data: jotformMatch, error: jotformError } = await supabase
+        .from('jotform_submissions')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      if (jotformError) {
+        console.error('JotForm lookup error:', jotformError);
+      }
+
+      if (jotformMatch) {
+        // Found their PMA submission — let them claim
+        setJotformData(jotformMatch);
+        setMode('claim');
       } else {
-        // User does NOT exist — let them create an account
-        setMode('create_account');
+        setError("We couldn't find a PMA membership for this email. If you just signed up, it may take a moment to sync. Try again shortly, or sign up at the Join page.");
       }
     } catch {
       setError('An error occurred. Please try again.');
@@ -64,7 +83,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
   };
 
-  // Step 2a: Login with existing password
+  // Login with existing password
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -82,22 +101,6 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
 
     if (authData.user) {
-      // Check if they have a member record; if not, create a basic one
-      const { data: existingMember } = await supabase
-        .from('members')
-        .select('id')
-        .eq('user_id', authData.user.id)
-        .maybeSingle();
-
-      if (!existingMember) {
-        await createBasicMember(authData.user.id, email);
-      }
-
-      setLoading(false);
-      onOpenChange(false);
-      resetForm();
-      navigate(existingMember ? '/dashboard' : '/welcome');
-    } else {
       setLoading(false);
       onOpenChange(false);
       resetForm();
@@ -105,8 +108,8 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
   };
 
-  // Step 2b: Create new account (used after JotForm completion OR for new users)
-  const handleCreateAccount = async (e: React.FormEvent) => {
+  // Claim account — create Supabase auth + member record
+  const handleClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -117,12 +120,11 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     });
 
     if (signUpError) {
-      // If user already exists, switch to login mode
       if (signUpError.message.includes('already registered')) {
         setLoading(false);
         setMode('login');
         setPassword('');
-        setError('An account with this email already exists. Please enter your password.');
+        setError('An account with this email already exists. Enter your password.');
         return;
       }
       setLoading(false);
@@ -131,8 +133,37 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     }
 
     if (signUpData.user) {
+      // Wait for Supabase session to propagate
       await new Promise(resolve => setTimeout(resolve, 500));
-      await createBasicMember(signUpData.user.id, email);
+
+      // Create member record
+      const now = new Date();
+      const thirtyDaysLater = new Date(now);
+      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+
+      await supabase.from('members').insert({
+        user_id: signUpData.user.id,
+        email: email.toLowerCase(),
+        first_name: jotformData?.first_name || '',
+        last_name: jotformData?.last_name || '',
+        phone: jotformData?.phone || '',
+        emergency_contact: jotformData?.emergency_contact || '',
+        membership_tier: jotformData?.membership_tier || 'monthly',
+        membership_start: now.toISOString(),
+        membership_end: thirtyDaysLater.toISOString(),
+        pma_agreed: true,
+        pma_agreed_at: jotformData?.submitted_at || now.toISOString(),
+        source: jotformData ? 'jotform' : 'app',
+      });
+
+      // Mark jotform submission as claimed
+      if (jotformData?.id) {
+        await supabase
+          .from('jotform_submissions')
+          .update({ claimed: true, claimed_by: signUpData.user.id })
+          .eq('id', jotformData.id);
+      }
+
       setLoading(false);
       onOpenChange(false);
       resetForm();
@@ -140,30 +171,6 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     } else {
       setLoading(false);
     }
-  };
-
-  // Create a basic member record directly (no jotform_submissions lookup needed)
-  const createBasicMember = async (userId: string, memberEmail: string) => {
-    const now = new Date();
-    const thirtyDaysLater = new Date(now);
-    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
-
-    await supabase.from('members').insert({
-      user_id: userId,
-      email: memberEmail.toLowerCase(),
-      first_name: '',
-      last_name: '',
-      phone: '',
-      emergency_contact: '',
-      license_plate: null,
-      photo_url: null,
-      membership_tier: 'monthly',
-      membership_start: now.toISOString(),
-      membership_end: thirtyDaysLater.toISOString(),
-      pma_agreed: true,
-      pma_agreed_at: now.toISOString(),
-      source: 'app',
-    });
   };
 
   // Password reset
@@ -178,7 +185,6 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     });
 
     setLoading(false);
-
     if (resetError) {
       setError('Error sending reset link. Please try again.');
     } else {
@@ -189,7 +195,8 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
   const resetForm = () => {
     setEmail('');
     setPassword('');
-    setMode(postJotform ? 'create_account' : 'email_check');
+    setJotformData(null);
+    setMode(postJotform ? 'claim' : 'email_check');
     setError('');
     setSuccess('');
   };
@@ -218,7 +225,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
             >
               {mode === 'email_check' && 'Find Your Account'}
               {mode === 'login' && 'Welcome Back'}
-              {mode === 'create_account' && 'Create Your Account'}
+              {mode === 'claim' && 'Set Up Your Account'}
               {mode === 'reset' && 'Reset Password'}
             </DialogTitle>
           </div>
@@ -236,7 +243,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
             </div>
           )}
 
-          {/* EMAIL CHECK MODE */}
+          {/* EMAIL CHECK */}
           {mode === 'email_check' && (
             <form onSubmit={checkEmail} className="space-y-4">
               <p className="text-sm text-gray-500 text-center mb-2">
@@ -264,7 +271,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
             </form>
           )}
 
-          {/* LOGIN MODE */}
+          {/* LOGIN */}
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
@@ -302,27 +309,35 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
             </form>
           )}
 
-          {/* CREATE ACCOUNT MODE */}
-          {mode === 'create_account' && (
-            <form onSubmit={handleCreateAccount} className="space-y-4">
-              <p className="text-sm text-gray-500 text-center mb-2">
-                Enter your email and create a password for the app.
-              </p>
+          {/* CLAIM / CREATE ACCOUNT */}
+          {mode === 'claim' && (
+            <form onSubmit={handleClaim} className="space-y-4">
+              {postJotform ? (
+                <p className="text-sm text-gray-500 text-center mb-2">
+                  Your PMA is complete! Enter your email and create a password for the app.
+                </p>
+              ) : (
+                <div className="text-sm text-green-700 bg-green-50 p-3 rounded-lg text-center mb-2">
+                  ✅ We found your PMA membership! Create a password below.
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="create-email">Email</Label>
+                <Label htmlFor="claim-email">Email</Label>
                 <Input
-                  id="create-email"
+                  id="claim-email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={!!jotformData}
+                  className={jotformData ? 'bg-gray-50 text-gray-500' : ''}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-password">Create Password</Label>
+                <Label htmlFor="claim-password">Create Password</Label>
                 <Input
-                  id="create-password"
+                  id="claim-password"
                   type="password"
                   placeholder="Create your password"
                   value={password}
@@ -342,11 +357,11 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
             </form>
           )}
 
-          {/* RESET MODE */}
+          {/* RESET */}
           {mode === 'reset' && (
             <form onSubmit={handleReset} className="space-y-4">
               <p className="text-sm text-gray-500 text-center mb-2">
-                We'll send you a link to reset your password.
+                We'll send a link to reset your password.
               </p>
               <div className="space-y-2">
                 <Label htmlFor="reset-email">Email</Label>
@@ -375,10 +390,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         {mode === 'email_check' && (
           <div className="text-center pt-2 pb-1">
             <button
-              onClick={() => {
-                onOpenChange(false);
-                navigate('/join');
-              }}
+              onClick={() => { onOpenChange(false); navigate('/join'); }}
               className="text-xs font-medium"
               style={{ color: 'var(--ea-spirulina)' }}
             >
@@ -390,11 +402,7 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         {mode !== 'email_check' && (
           <div className="text-center pt-2 pb-1">
             <button
-              onClick={() => {
-                setMode('email_check');
-                setPassword('');
-                setError('');
-              }}
+              onClick={() => { setMode('email_check'); setPassword(''); setError(''); setJotformData(null); }}
               className="text-xs font-medium text-gray-400 hover:text-gray-600"
             >
               ← Use a different email
