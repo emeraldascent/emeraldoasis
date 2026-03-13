@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Member, BadgeStatus } from '../lib/types';
+import { matchJotformAndCreateMember } from './useJotformMatch';
 import type { User, Session } from '@supabase/supabase-js';
 
 function calculateBadgeStatus(member: Member): BadgeStatus {
@@ -23,7 +24,7 @@ export function useMember() {
   const [badgeStatus, setBadgeStatus] = useState<BadgeStatus>('expired');
   const [loading, setLoading] = useState(true);
 
-  const fetchMember = useCallback(async (userId: string) => {
+  const fetchMember = useCallback(async (userId: string, email?: string) => {
     const { data, error } = await supabase
       .from('members')
       .select('*')
@@ -38,6 +39,21 @@ export function useMember() {
     if (data) {
       setMember(data as Member);
       setBadgeStatus(calculateBadgeStatus(data as Member));
+    } else if (email) {
+      // No member record — try to match from JotForm submissions
+      const created = await matchJotformAndCreateMember(userId, email);
+      if (created) {
+        // Re-fetch the newly created member
+        const { data: newData } = await supabase
+          .from('members')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (newData) {
+          setMember(newData as Member);
+          setBadgeStatus(calculateBadgeStatus(newData as Member));
+        }
+      }
     }
   }, []);
 
@@ -46,7 +62,7 @@ export function useMember() {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchMember(session.user.id);
+        fetchMember(session.user.id, session.user.email);
       }
       setLoading(false);
     });
@@ -56,7 +72,7 @@ export function useMember() {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchMember(session.user.id);
+          fetchMember(session.user.id, session.user.email);
         } else {
           setMember(null);
           setBadgeStatus('expired');
