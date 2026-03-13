@@ -40,24 +40,28 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         password,
       });
 
-      setLoading(false);
-
       if (signUpError) {
+        setLoading(false);
         setError(signUpError.message || 'Error creating account. Please try again.');
         return;
       }
 
       if (signUpData.user) {
+        // Wait a brief moment for the Supabase session to fully propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
         const created = await matchJotformAndCreateMember(signUpData.user.id, email);
+        setLoading(false);
         onOpenChange(false);
         resetForm();
         navigate(created ? '/welcome' : '/dashboard');
+      } else {
+        setLoading(false);
       }
       return;
     }
 
     // Standard Login Mode
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { error: authError, data: authData } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -82,16 +86,16 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       return;
     }
 
-    setLoading(false);
-
     // Login successful
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) {
-      const created = await matchJotformAndCreateMember(authUser.id, authUser.email || email);
+    if (authData.user) {
+      // Check if we need to auto-create their member record from JotForm
+      const created = await matchJotformAndCreateMember(authData.user.id, authData.user.email || email);
+      setLoading(false);
       onOpenChange(false);
       resetForm();
       navigate(created ? '/welcome' : '/dashboard');
     } else {
+      setLoading(false);
       onOpenChange(false);
       resetForm();
       navigate('/dashboard');
