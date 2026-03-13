@@ -149,6 +149,7 @@ export type Database = {
           last_name: string
           license_plate: string | null
           matched_member_id: string | null
+          membership_tier: string | null
           phone: string
           photo_url: string | null
           pma_agreed: boolean
@@ -170,6 +171,7 @@ export type Database = {
           last_name?: string
           license_plate?: string | null
           matched_member_id?: string | null
+          membership_tier?: string | null
           phone?: string
           photo_url?: string | null
           pma_agreed?: boolean
@@ -191,6 +193,7 @@ export type Database = {
           last_name?: string
           license_plate?: string | null
           matched_member_id?: string | null
+          membership_tier?: string | null
           phone?: string
           photo_url?: string | null
           pma_agreed?: boolean

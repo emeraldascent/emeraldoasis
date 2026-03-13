@@ -6,26 +6,18 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // JotForm sends data as application/x-www-form-urlencoded
     const contentType = req.headers.get("content-type") || "";
     let formData: Record<string, string> = {};
 
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const body = await req.text();
-      const params = new URLSearchParams(body);
-      for (const [key, value] of params.entries()) {
-        formData[key] = value;
-      }
-    } else if (contentType.includes("application/json")) {
+    if (contentType.includes("application/json")) {
       formData = await req.json();
     } else {
-      // Try form-urlencoded as default (JotForm's standard)
+      // JotForm sends application/x-www-form-urlencoded by default
       const body = await req.text();
       const params = new URLSearchParams(body);
       for (const [key, value] of params.entries()) {
@@ -33,69 +25,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Extract fields from JotForm's flat key format
-    // JotForm sends fields like q3_fullName[first], q3_fullName[last], q5_email, q7_phoneNumber[full], etc.
-    // The exact field IDs depend on the form — we'll parse common patterns
-    const rawJson = JSON.stringify(formData);
-
-    // Find email (look for keys containing "email")
     let email = "";
     let firstName = "";
     let lastName = "";
     let phone = "";
     let emergencyContact = "";
+    let membershipTier = "";
     let submissionId = formData["submissionID"] || formData["submission_id"] || "";
 
     for (const [key, value] of Object.entries(formData)) {
-      const keyLower = key.toLowerCase();
-
-      if (keyLower.includes("email") && value && !email) {
-        email = value.trim().toLowerCase();
-      }
-      if ((keyLower.includes("name") && keyLower.includes("[first]")) || keyLower === "first_name") {
-        firstName = value.trim();
-      }
-      if ((keyLower.includes("name") && keyLower.includes("[last]")) || keyLower === "last_name") {
-        lastName = value.trim();
-      }
-      if ((keyLower.includes("phone") && keyLower.includes("[full]")) || keyLower === "phone") {
-        phone = value.trim();
-      }
-      if (keyLower.includes("emergency")) {
-        emergencyContact = value.trim();
-      }
+      const k = key.toLowerCase();
+      if (k.includes("email") && value && !email) email = value.trim().toLowerCase();
+      if ((k.includes("name") && k.includes("[first]")) || k === "first_name") firstName = value.trim();
+      if ((k.includes("name") && k.includes("[last]")) || k === "last_name") lastName = value.trim();
+      if ((k.includes("phone") && k.includes("[full]")) || k === "phone") phone = value.trim();
+      if (k.includes("emergency")) emergencyContact = value.trim();
+      if (k.includes("membership") || k.includes("tier") || k.includes("plan")) membershipTier = value.trim().toLowerCase();
     }
 
     if (!email) {
-      console.error("No email found in submission:", rawJson);
+      console.error("No email found in submission:", JSON.stringify(formData));
       return new Response(
         JSON.stringify({ error: "No email found in submission" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Connect to Supabase with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Upsert into jotform_submissions (update if same email resubmits)
     const { data, error } = await supabase
       .from("jotform_submissions")
-      .upsert(
-        {
-          submission_id: submissionId,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          emergency_contact: emergencyContact,
-          raw_data: formData,
-          submitted_at: new Date().toISOString(),
-          claimed: false,
-        },
-        { onConflict: "submission_id" }
-      )
+      .insert({
+        jotform_submission_id: submissionId || null,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        emergency_contact: emergencyContact,
+        membership_tier: membershipTier || null,
+        raw_payload: formData,
+      })
       .select();
 
     if (error) {
