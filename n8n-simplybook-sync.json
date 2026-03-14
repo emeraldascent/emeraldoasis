@@ -1,0 +1,218 @@
+{
+  "name": "SimplyBook to Supabase Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "e98dfcbb-1eb9-4089-9fc6-5a48d88fa7b2",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://user-api.simplybook.me/login",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "jsonrpc",
+              "value": "2.0"
+            },
+            {
+              "name": "method",
+              "value": "getToken"
+            },
+            {
+              "name": "params",
+              "value": "={{ [\"emeraldoasiscamp\", \"8d336f8759b5b67c2ed868ddc9cb88c27725aa8afbc3195b836a8d4a3a255936\"] }}"
+            },
+            {
+              "name": "id",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0df6e7dc-32b0-4584-aece-907ec7ed0974",
+      "name": "Get Auth Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://user-api.simplybook.me",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Company-Login",
+              "value": "emeraldoasiscamp"
+            },
+            {
+              "name": "X-Token",
+              "value": "={{ $json.result }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "jsonrpc",
+              "value": "2.0"
+            },
+            {
+              "name": "method",
+              "value": "getClientList"
+            },
+            {
+              "name": "params",
+              "value": "=[null, \"client\", null]"
+            },
+            {
+              "name": "id",
+              "value": "2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9364b4c3-b32c-4cc3-ab3d-cb1b83d73b64",
+      "name": "Get Clients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result",
+        "options": {}
+      },
+      "id": "2e6b8c9b-6dbb-4394-bb9f-a20c3cc79c94",
+      "name": "Item Lists",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        920,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://spvwavyrvqpnslowlhig.supabase.co/functions/v1/simplybook-webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "silver",
+              "value": "={{ $json.memberships ? 'silver' : '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f51f33f3-0af4-4340-9759-7b337c6742d0",
+      "name": "Sync to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1140,
+        280
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Auth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Auth Token": {
+      "main": [
+        [
+          {
+            "node": "Get Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clients": {
+      "main": [
+        [
+          {
+            "node": "Item Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists": {
+      "main": [
+        [
+          {
+            "node": "Sync to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f0cfd9b4-53c0-482a-ad54-8c888d37446f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cb4860d5c808f0a0c640d21098b64e0303ba767e722881a2ab72a45d04cc6349"
+  },
+  "tags": []
+}
