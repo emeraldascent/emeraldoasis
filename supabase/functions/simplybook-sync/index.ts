@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
@@ -11,21 +10,22 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const password = Deno.env.get("SIMPLYBOOK_ADMIN_PASSWORD");
-  if (!password) throw new Error("Missing SIMPLYBOOK_ADMIN_PASSWORD secret.");
+  const apiKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
+  if (!apiKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
 
+  // Use API User Key auth as required by SimplyBook for untrusted IPs
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
-      method: "getUserToken",
-      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, password],
+      method: "getToken",
+      params: [SIMPLYBOOK_COMPANY, apiKey],
       id: 1,
     }),
   });
   const data = await res.json();
-  if (data.error) throw new Error("Admin auth failed: " + data.error.message);
+  if (data.error) throw new Error("Auth failed: " + data.error.message);
   return data.result;
 }
 
@@ -50,39 +50,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Authenticating with SimplyBook Admin API...");
+    console.log("Authenticating with SimplyBook API User Key...");
     const token = await getAdminToken();
-    console.log("Admin token obtained.");
+    console.log("Token obtained. Testing admin access...");
 
-    // Get all clients
-    console.log("Fetching client list...");
+    // Test admin endpoint access
     const clientsRaw = await callAdminApi(token, "getClientList", [null, "client", null]);
     const clientMap = clientsRaw?.data || clientsRaw || {};
     const clients: any[] = Object.values(clientMap);
     console.log(`Found ${clients.length} clients.`);
 
-    // Build email -> tier map by checking each client's memberships
+    // Build email -> tier map
     const activeSubscriptions = new Map<string, string>();
-    const clientIdToEmail = new Map<string, string>();
 
-    for (const c of clients) {
-      if (c.email) {
-        clientIdToEmail.set(String(c.id), c.email.toLowerCase().trim());
-      }
-    }
-
-    // Check memberships for each client that matches a member in our DB
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Try to get membership info from client data directly
     for (const c of clients) {
       if (!c.email) continue;
       const email = c.email.toLowerCase().trim();
       const clientStr = JSON.stringify(c).toLowerCase();
 
-      // Check for membership keywords
       if (clientStr.includes("gold") || clientStr.includes("oasis pass - gold")) {
         activeSubscriptions.set(email, "gold");
       } else if (clientStr.includes("silver") || clientStr.includes("oasis pass - silver")) {
@@ -90,48 +75,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Also try getClientMembershipList for each client with our DB members
+    // Sync to Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const { data: dbMembers, error: dbError } = await supabase
       .from("members")
       .select("id, email, subscription_active, subscription_tier");
     if (dbError) throw new Error(dbError.message);
 
-    // Find SimplyBook client IDs for our members
+    // Also look up membership details per matching client
     const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
-    const memberClientIds: { clientId: string; email: string }[] = [];
-
     for (const c of clients) {
       if (!c.email) continue;
       const email = c.email.toLowerCase().trim();
-      if (memberEmails.has(email)) {
-        memberClientIds.push({ clientId: String(c.id), email });
-      }
-    }
-
-    // Try to get membership details per client
-    for (const { clientId, email } of memberClientIds) {
-      if (activeSubscriptions.has(email)) continue;
+      if (!memberEmails.has(email) || activeSubscriptions.has(email)) continue;
+      
       try {
-        const memberships = await callAdminApi(token, "getClientMembershipList", [clientId]);
-        if (memberships && typeof memberships === "object") {
+        const memberships = await callAdminApi(token, "getClientMembershipList", [String(c.id)]);
+        if (memberships) {
           const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
           for (const m of entries) {
-            const mName = String((m as any).name || (m as any).membership_name || "").toLowerCase();
-            if (mName.includes("gold")) {
-              activeSubscriptions.set(email, "gold");
-            } else if (mName.includes("silver")) {
-              activeSubscriptions.set(email, "silver");
-            }
+            const mName = String((m as any).name || "").toLowerCase();
+            if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
+            else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
           }
         }
       } catch (e) {
-        console.log(`getClientMembershipList(${clientId}) for ${email}: ${String(e)}`);
+        console.log(`Membership check for ${email}: ${String(e)}`);
       }
     }
 
-    console.log(`Active subscriptions found: ${activeSubscriptions.size}`);
+    console.log(`Active subscriptions: ${activeSubscriptions.size}`);
 
-    // Sync to Supabase
     let updatedCount = 0;
     const updates = [];
 
@@ -157,7 +134,6 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Sync complete",
         simplybook_clients: clients.length,
         active_subscriptions: activeSubscriptions.size,
         records_updated: updatedCount,
@@ -167,8 +143,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("Sync error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
