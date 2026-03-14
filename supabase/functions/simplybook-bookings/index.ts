@@ -160,12 +160,21 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, client=${clientId}, date=${date}, time=${time}`);
+      // Convert additional fields from array format [{id, value}] to object format {id: value}
+      let additionalObj: Record<string, any> = {};
+      if (Array.isArray(additionalFields)) {
+        for (const f of additionalFields) {
+          if (f && f.id !== undefined) additionalObj[String(f.id)] = f.value;
+        }
+      } else if (additionalFields && typeof additionalFields === "object") {
+        additionalObj = additionalFields;
+      }
+
+      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, client=${clientId}, date=${date}, time=${time}, additional=${JSON.stringify(additionalObj)}`);
 
       // Admin API: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
-      // Pass null for endDate/endTime so SimplyBook auto-calculates based on event duration
       const result = await callAdminApi(adminToken, "book", [
-        eventId, resolvedUnitId, clientId, date, time, null, null, null, additionalFields || {}, count || 1,
+        eventId, resolvedUnitId, clientId, date, time, null, null, null, additionalObj, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
