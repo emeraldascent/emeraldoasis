@@ -340,11 +340,18 @@ function MemberPassSection({
     fetchUsage();
   }, [member.id, hasSubscription]);
 
-  const handleModalClose = (purchased: boolean) => {
+  const handleModalClose = async (purchased: boolean) => {
     setModalOpen(false);
     if (purchased) {
-      // Reload the page to pick up subscription changes
-      // (Admin needs to mark subscription_active in Supabase after SimplyBook purchase)
+      // Immediately sync this member's subscription status from SimplyBook
+      try {
+        await supabase.functions.invoke('simplybook-sync', {
+          body: { action: 'check_member', email: member.email },
+        });
+      } catch (e) {
+        console.error('Membership sync error:', e);
+      }
+      // Reload to pick up the updated subscription status
       window.location.reload();
     }
   };
