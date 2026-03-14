@@ -197,6 +197,7 @@ function MembershipModal({
       new (window as any).SimplybookWidget({
         widget_type: 'button',
         url: 'https://emeraldoasiscamp.simplybook.me',
+        navigate: 'memberships',
         theme: 'air',
         theme_settings: {
           timeline_hide_unavailable: '1',
