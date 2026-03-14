@@ -122,8 +122,20 @@ serve(async (req) => {
       };
       const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
+      // Convert additional fields from array [{id, value}] to object {id: value}
+      let additionalObj: Record<string, any> = {};
+      if (Array.isArray(additionalFields)) {
+        for (const f of additionalFields) {
+          if (f && f.id !== undefined) additionalObj[String(f.id)] = f.value;
+        }
+      } else if (additionalFields && typeof additionalFields === "object") {
+        additionalObj = additionalFields;
+      }
+
+      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, additional=${JSON.stringify(additionalObj)}`);
+
       const result = await callPublicApi(token, "book", [
-        eventId, resolvedUnitId, date, time, clientData, additionalFields || [], count || 1,
+        eventId, resolvedUnitId, date, time, clientData, additionalObj, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
