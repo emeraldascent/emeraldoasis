@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
+const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
@@ -10,41 +11,26 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const candidateKeys = [
-    { name: "SIMPLYBOOK_ADMIN_API_KEY", value: Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") },
-    { name: "SIMPLYBOOK_API_KEY", value: Deno.env.get("SIMPLYBOOK_API_KEY") },
-  ].filter((entry): entry is { name: string; value: string } => Boolean(entry.value));
+  const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
+  if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
 
-  if (candidateKeys.length === 0) {
-    throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY and SIMPLYBOOK_API_KEY secrets.");
-  }
+  // Use getUserToken with the API User Key as the password — bypasses IP restrictions
+  const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "getUserToken",
+      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, apiUserKey],
+      id: 1,
+    }),
+  });
 
-  const authErrors: string[] = [];
-
-  for (const candidate of candidateKeys) {
-    const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "getToken",
-        params: [SIMPLYBOOK_COMPANY, candidate.value],
-        id: 1,
-      }),
-    });
-
-    const data = await res.json();
-    console.log(`getToken response (${candidate.name}):`, JSON.stringify(data));
-
-    if (!data.error && data.result) {
-      console.log(`Authenticated with ${candidate.name}.`);
-      return data.result;
-    }
-
-    authErrors.push(`${candidate.name}: ${data?.error?.message || "empty token"}`);
-  }
-
-  throw new Error(`Auth failed for all API keys. ${authErrors.join(" | ")}`);
+  const data = await res.json();
+  console.log("getUserToken response:", JSON.stringify(data));
+  if (data.error) throw new Error("Auth failed: " + data.error.message);
+  if (!data.result) throw new Error("Auth failed: empty token");
+  return data.result;
 }
 
 async function callAdminApi(token: string, method: string, params: unknown[]) {
