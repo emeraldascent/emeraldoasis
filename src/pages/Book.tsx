@@ -165,7 +165,7 @@ export function Book({ member, badgeStatus }: BookProps) {
 function MembershipModal({
   open,
   onClose,
-  tier,
+  _tier,
   member,
 }: {
   open: boolean;
