@@ -47,7 +47,7 @@ export function MemberRoster() {
     
     const { error } = await supabase
       .from('members')
-      .update({ subscription_active: newStatus, subscription_tier: newTier })
+      .update({ subscription_active: newStatus, subscription_tier: newTier } as any)
       .eq('id', member.id);
       
     if (!error) {

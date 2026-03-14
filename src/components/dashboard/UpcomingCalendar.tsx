@@ -5,16 +5,17 @@ import { supabase } from '@/integrations/supabase/client';
 interface Booking {
   id: string;
   service_name: string;
-  service_id: number;
+  service_id: string | null;
   booking_date: string;
   booking_time: string | null;
-  is_member_pass: boolean;
+  is_member_pass: boolean | null;
   status: string;
 }
 
-function getServiceIcon(serviceId: number) {
-  if ([11, 12, 13, 14, 9, 8, 10].includes(serviceId)) return <Tent size={14} />;
-  if ([20, 21].includes(serviceId)) return <Star size={14} />;
+function getServiceIcon(serviceId: string | null) {
+  const id = Number(serviceId);
+  if ([11, 12, 13, 14, 9, 8, 10].includes(id)) return <Tent size={14} />;
+  if ([20, 21].includes(id)) return <Star size={14} />;
   return <Sun size={14} />;
 }
 

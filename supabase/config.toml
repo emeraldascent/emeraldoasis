@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.simplybook-bookings]
 verify_jwt = false
+
+[functions.simplybook-sync]
+verify_jwt = false

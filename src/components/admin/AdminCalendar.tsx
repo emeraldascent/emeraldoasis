@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface Booking {
   id: string;
   service_name: string;
-  service_id: number;
+  service_id: string | null;
   booking_date: string;
   booking_time: string | null;
-  guest_names: string | null;
-  is_member_pass: boolean;
+  guest_names: string[] | null;
+  is_member_pass: boolean | null;
   status: string;
   member: { first_name: string; last_name: string; email: string } | null;
 }
@@ -20,11 +20,12 @@ const MONTH_NAMES = [
 ];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function getServiceIcon(serviceId: number) {
-  if ([11, 12, 13, 14].includes(serviceId)) return <Tent size={12} />;
-  if ([8, 10].includes(serviceId)) return <Users size={12} />;
-  if ([9].includes(serviceId)) return <Tent size={12} />;
-  if ([20, 21].includes(serviceId)) return <Star size={12} />;
+function getServiceIcon(serviceId: string | null) {
+  const id = Number(serviceId);
+  if ([11, 12, 13, 14].includes(id)) return <Tent size={12} />;
+  if ([8, 10].includes(id)) return <Users size={12} />;
+  if ([9].includes(id)) return <Tent size={12} />;
+  if ([20, 21].includes(id)) return <Star size={12} />;
   return <Sun size={12} />;
 }
 
@@ -247,7 +248,7 @@ export function AdminCalendar() {
                           <span className="text-gray-400">{b.member.email}</span>
                         </p>
                       )}
-                      {b.guest_names && b.guest_names !== `${b.member?.first_name} ${b.member?.last_name}` && (
+                      {b.guest_names && Array.isArray(b.guest_names) && b.guest_names.join(', ') !== `${b.member?.first_name} ${b.member?.last_name}` && (
                         <p className="text-[10px] text-gray-400 mt-0.5">
                           Guests: {b.guest_names}
                         </p>
