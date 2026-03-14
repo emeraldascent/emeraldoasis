@@ -108,78 +108,56 @@ serve(async (req) => {
       });
     }
 
-    // Write actions use admin token
+    // Booking uses public API token (client login disabled in SimplyBook)
     if (action === "book") {
-      const adminToken = await getAdminToken();
+      const token = await getPublicToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
 
-      // Resolve unit ID — admin API requires it
-      // Event-to-Unit mapping based on SimplyBook configuration:
+      // Event-to-Unit mapping based on SimplyBook configuration
       const EVENT_UNIT_MAP: Record<number, number> = {
-        // Day passes → Day Pass Parking (unit 22)
-        18: 22, 19: 22, 22: 22, 23: 22,
-        // Member passes → Day Pass Parking (unit 22)
-        20: 22, 21: 22,
-        // Campsites
-        11: 4,   // Campsite 3
-        12: 5,   // Campsite 4
-        13: 6,   // Campsite 5
-        14: 7,   // Campsite 6
-        9: 23,   // Campsite 7 Social
-        8: 8,    // Campsite 7 Group
-        10: 3,   // Creekside Group #2
+        18: 22, 19: 22, 22: 22, 23: 22, // Day passes → Day Pass Parking
+        20: 22, 21: 22,                   // Member passes → Day Pass Parking
+        11: 4, 12: 5, 13: 6, 14: 7,      // Campsites 3-6
+        9: 23, 8: 8, 10: 3,              // Campsite 7 Social/Group, Creekside
       };
-
       const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
-      // Find or create client
-      let clientId: string | number | null = null;
-      try {
-        const clients = await callAdminApi(adminToken, "getClientList", []);
-        const clientList: any[] = Array.isArray(clients) ? clients : Object.values(clients);
-        const match = clientList.find(
-          (c: any) => c.email && c.email.toLowerCase().trim() === clientData.email.toLowerCase().trim()
-        );
-        if (match) clientId = match.id;
-      } catch (e) {
-        console.log("Client lookup failed:", e);
+      // SimplyBook expects additional fields keyed by field hash name, not numeric ID
+      // Fetch field definitions to map id → hash name
+      const fieldDefs = await callPublicApi(token, "getAdditionalFields", [eventId]);
+      const fieldList: any[] = Array.isArray(fieldDefs) ? fieldDefs : Object.values(fieldDefs);
+      const idToName: Record<string, string> = {};
+      for (const f of fieldList) {
+        idToName[String(f.id)] = f.name;
       }
 
-      if (!clientId) {
-        try {
-          const nameParts = (clientData.name || "").split(" ");
-          const newClient = await callAdminApi(adminToken, "addClient", [{
-            name: nameParts[0] || clientData.name,
-            last_name: nameParts.slice(1).join(" ") || "",
-            email: clientData.email,
-            phone: clientData.phone || "",
-          }]);
-          clientId = newClient?.id || newClient;
-        } catch (e) {
-          console.error("Failed to create client:", e);
-        }
-      }
-
-      // Convert additional fields from array format [{id, value}] to object format {id: value}
       let additionalObj: Record<string, any> = {};
       if (Array.isArray(additionalFields)) {
         for (const f of additionalFields) {
-          if (f && f.id !== undefined) additionalObj[String(f.id)] = f.value;
+          if (f && f.id !== undefined) {
+            const key = idToName[String(f.id)] || String(f.id);
+            additionalObj[key] = f.value;
+          }
         }
       } else if (additionalFields && typeof additionalFields === "object") {
-        additionalObj = additionalFields;
+        // If already keyed by name/id, try to remap
+        for (const [k, v] of Object.entries(additionalFields)) {
+          const key = idToName[k] || k;
+          additionalObj[key] = v;
+        }
       }
 
-      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, client=${clientId}, date=${date}, time=${time}, additional=${JSON.stringify(additionalObj)}`);
+      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, additional=${JSON.stringify(additionalObj)}`);
 
-      // Admin API: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
-      const result = await callAdminApi(adminToken, "book", [
-        eventId, resolvedUnitId, clientId, date, time, null, null, null, additionalObj, count || 1,
+      const result = await callPublicApi(token, "book", [
+        eventId, resolvedUnitId, date, time, clientData, additionalObj, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+
 
     if (action === "check_membership") {
       const { email } = body;
