@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_API_KEY = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") || "";
+const SIMPLYBOOK_API_KEY = Deno.env.get("SIMPLYBOOK_API_KEY") || "";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_API_URL = "https://user-api.simplybook.me/admin/";
 
