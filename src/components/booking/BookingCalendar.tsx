@@ -31,10 +31,19 @@ const MONTH_NAMES = [
 ];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-async function simplybookCall(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('simplybook-bookings', { body });
-  if (error) throw error;
-  return data;
+async function simplybookCall(body: Record<string, unknown>, maxRetries = 5): Promise<any> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke('simplybook-bookings', { body });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    } catch (err) {
+      console.warn(`SimplyBook attempt ${attempt}/${maxRetries} failed:`, err);
+      if (attempt === maxRetries) throw err;
+      await new Promise(r => setTimeout(r, 1000 * attempt)); // exponential-ish backoff
+    }
+  }
 }
 
 export function BookingCalendar({ service, member, onBack }: BookingCalendarProps) {
