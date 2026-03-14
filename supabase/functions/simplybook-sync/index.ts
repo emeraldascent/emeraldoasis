@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
@@ -10,51 +9,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAdminToken(): Promise<string> {
-  const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
-  if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
-
-  // Use getUserToken with API User Key — bypasses IP restrictions
+async function tryGetUserToken(login: string, password: string): Promise<{ token: string | null; error: string | null }> {
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "getUserToken",
-      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, apiUserKey],
+      params: [SIMPLYBOOK_COMPANY, login, password],
       id: 1,
     }),
   });
-
   const data = await res.json();
-  console.log("getUserToken response:", JSON.stringify(data));
-  if (data.error) throw new Error("Auth failed: " + data.error.message);
-  if (!data.result) throw new Error("Auth failed: empty token");
-  return data.result;
+  if (data.error) return { token: null, error: data.error.message };
+  return { token: data.result, error: null };
 }
 
-// Also try REST Admin API auth
-async function getRestAdminToken(): Promise<string> {
-  const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
-  if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
-
-  const res = await fetch(`https://${SIMPLYBOOK_COMPANY}.simplybook.me/admin/auth`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      company: SIMPLYBOOK_COMPANY,
-      login: SIMPLYBOOK_ADMIN_LOGIN,
-      password: apiUserKey,
-    }),
-  });
-
-  const data = await res.json();
-  console.log("REST admin auth response:", JSON.stringify(data));
-  return data.token;
-}
-
-async function callJsonRpc(token: string, url: string, method: string, params: unknown[]) {
-  const res = await fetch(url, {
+async function callAdmin(token: string, method: string, params: unknown[]) {
+  const res = await fetch(SIMPLYBOOK_ADMIN_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -72,47 +44,49 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("=== SimplyBook Sync: Probing available methods ===");
+    const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
+    if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
 
-    // Get token via getUserToken (API User Key)
-    const token = await getAdminToken();
-    console.log("JSON-RPC token obtained.");
+    console.log("=== Testing different login values with API User Key ===");
 
-    // Probe: list admin methods that work
-    const probes = [
-      { url: SIMPLYBOOK_ADMIN_URL, method: "getClientList", params: [null, "client", null] },
-      { url: SIMPLYBOOK_ADMIN_URL, method: "getBookingList", params: [null, null, null] },
-      { url: SIMPLYBOOK_ADMIN_URL, method: "getUserList", params: [] },
-      { url: SIMPLYBOOK_ADMIN_URL, method: "getMembershipList", params: [] },
-      { url: "https://user-api.simplybook.me", method: "getMembershipList", params: [] },
-      { url: "https://user-api.simplybook.me", method: "getClientList", params: [null, "client", null] },
+    const logins = [
+      "emeraldoasiscamp@gmail.com",
+      "emeraldoasiscamp",
+      "api",
+      "admin",
     ];
 
-    const results: Record<string, string> = {};
+    const results: Record<string, any> = {};
 
-    for (const p of probes) {
-      const res = await callJsonRpc(token, p.url, p.method, p.params);
-      const endpoint = p.url.includes("/admin") ? "admin" : "public";
-      const status = res.error ? `DENIED: ${res.error.message}` : `OK (${typeof res.result === "object" ? JSON.stringify(res.result).slice(0, 200) : res.result})`;
-      results[`${endpoint}/${p.method}`] = status;
-      console.log(`${endpoint}/${p.method}: ${status}`);
-    }
+    for (const login of logins) {
+      const { token, error } = await tryGetUserToken(login, apiUserKey);
+      if (error) {
+        results[login] = { auth: `FAILED: ${error}` };
+        console.log(`Login "${login}": auth failed - ${error}`);
+        continue;
+      }
 
-    // Also try REST admin auth
-    let restToken = "";
-    try {
-      restToken = await getRestAdminToken();
-      console.log("REST admin token:", restToken ? "obtained" : "empty");
-    } catch (e) {
-      console.log("REST admin auth failed:", String(e));
+      console.log(`Login "${login}": token obtained`);
+
+      // Test getClientList with this token
+      const clientRes = await callAdmin(token!, "getClientList", [null, "client", null]);
+      const clientStatus = clientRes.error ? `DENIED: ${clientRes.error.message}` : "OK";
+
+      // Test getMembershipList
+      const memberRes = await callAdmin(token!, "getMembershipList", []);
+      const memberStatus = memberRes.error ? `DENIED: ${memberRes.error.message}` : `OK: ${JSON.stringify(memberRes.result).slice(0, 300)}`;
+
+      results[login] = { auth: "OK", getClientList: clientStatus, getMembershipList: memberStatus };
+      console.log(`  getClientList: ${clientStatus}`);
+      console.log(`  getMembershipList: ${memberStatus}`);
     }
 
     return new Response(
-      JSON.stringify({ success: true, probes: results, rest_token: !!restToken }),
+      JSON.stringify({ success: true, results }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Sync error:", err);
+    console.error("Error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
