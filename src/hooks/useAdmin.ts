@@ -1,10 +1,36 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-const ADMIN_EMAIL = 'emeraldoasiscamp@gmail.com';
+export function useAdmin(user: User | null): { isAdmin: boolean; loading: boolean } {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-export function useAdmin(user: User | null): boolean {
-  return useMemo(() => {
-    return user?.email === ADMIN_EMAIL;
-  }, [user]);
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      setLoading(false);
+      return;
+    }
+
+    const checkAdmin = async () => {
+      try {
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin',
+        });
+        if (error) throw error;
+        setIsAdmin(!!data);
+      } catch (err) {
+        console.error('Admin check failed:', err);
+        setIsAdmin(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAdmin();
+  }, [user?.id]);
+
+  return { isAdmin, loading };
 }
