@@ -122,7 +122,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
     `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const isCampsite = CAMPSITE_IDS.includes(service.id);
-
+  const isMemberPass = MEMBER_PASS_IDS.includes(service.id);
   const handleDateSelect = (day: number) => {
     const key = getDayKey(day);
     if (key < todayStr) return;
