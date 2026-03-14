@@ -43,9 +43,9 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   const [error, setError] = useState('');
 
   // Calendar state
-  const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+  const today = useMemo(() => new Date(), []);
+  const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
 
   // Availability data: { "2026-03-14": ["12:00:00"] }
   const [timeSlots, setTimeSlots] = useState<Record<string, string[]>>({});
