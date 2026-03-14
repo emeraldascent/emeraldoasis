@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     let phone = "";
     let emergencyContact = "";
     let membershipTier = "";
+    let licensePlate = "";
     let submissionId = formData["submissionID"] || formData["submission_id"] || "";
 
     for (const [key, value] of Object.entries(formData)) {
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
       if ((k.includes("phone") && k.includes("[full]")) || k === "phone") phone = value.trim();
       if (k.includes("emergency")) emergencyContact = value.trim();
       if (k.includes("membership") || k.includes("tier") || k.includes("plan")) membershipTier = value.trim().toLowerCase();
+      if (k.includes("license") || k.includes("plate") || k.includes("vehicle")) licensePlate = value.trim();
     }
 
     if (!email) {
@@ -64,6 +66,7 @@ Deno.serve(async (req) => {
         last_name: lastName,
         phone,
         emergency_contact: emergencyContact,
+        license_plate: licensePlate || null,
         membership_tier: membershipTier || null,
         raw_payload: formData,
       })

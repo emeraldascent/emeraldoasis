@@ -166,10 +166,12 @@ function MembershipModal({
   open,
   onClose,
   tier,
+  member,
 }: {
   open: boolean;
   onClose: (purchased: boolean) => void;
   tier: 'silver' | 'gold';
+  member: Member | null;
 }) {
   const label = tier === 'silver' ? 'Silver' : 'Gold';
 
@@ -183,6 +185,15 @@ function MembershipModal({
       if (container) {
         container.innerHTML = ''; // Clean up before re-init
       }
+
+      // Pre-fill client details if member exists
+      const predefinedClient = member ? {
+        client: {
+          name: `${member.first_name || ''} ${member.last_name || ''}`.trim() || undefined,
+          email: member.email || undefined,
+          phone: member.phone || undefined,
+        }
+      } : {};
 
       // If SimplybookWidget exists globally, initialize it targeting our container
       if ((window as any).SimplybookWidget) {
@@ -215,7 +226,7 @@ function MembershipModal({
           app_config: {
             clear_session: 0,
             allow_switch_to_ada: 0,
-            predefined: [],
+            predefined: predefinedClient,
           },
           container_id: 'sb-membership-modal-container',
         });
@@ -346,6 +357,7 @@ function MemberPassSection({
           open={modalOpen}
           onClose={handleModalClose}
           tier={selectedTier}
+          member={member}
         />
         <div>
           <h2
