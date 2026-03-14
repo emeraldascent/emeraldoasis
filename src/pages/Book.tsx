@@ -178,8 +178,6 @@ function MembershipModal({
   useEffect(() => {
     if (!open) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    let widgetInstance: any = null;
 
     const initWidget = () => {
       const container = document.getElementById('sb-membership-modal-container');
@@ -198,7 +196,7 @@ function MembershipModal({
 
       // If SimplybookWidget exists globally, initialize it targeting our container
       if ((window as any).SimplybookWidget) {
-        widgetInstance = new (window as any).SimplybookWidget({
+        new (window as any).SimplybookWidget({
           widget_type: 'membership',
           url: 'https://emeraldoasiscamp.simplybook.me',
           theme: 'air',
