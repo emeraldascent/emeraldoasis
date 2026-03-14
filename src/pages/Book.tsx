@@ -174,8 +174,6 @@ function MemberPassSection({
   member: Member;
   onSelect: (s: ServiceCard) => void;
 }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<'silver' | 'gold'>('silver');
   const [passesUsed, setPassesUsed] = useState(0);
   const [loadingUsage, setLoadingUsage] = useState(true);
 
@@ -204,91 +202,71 @@ function MemberPassSection({
     fetchUsage();
   }, [member.id, hasSubscription]);
 
-  const handleModalClose = async (purchased: boolean) => {
-    setModalOpen(false);
-    if (purchased) {
-      // Immediately sync this member's subscription status from SimplyBook
-      try {
-        await supabase.functions.invoke('simplybook-sync', {
-          body: { action: 'check_member', email: member.email },
-        });
-      } catch (e) {
-        console.error('Membership sync error:', e);
-      }
-      // Reload to pick up the updated subscription status
-      window.location.reload();
-    }
+  const openSubscribePage = () => {
+    window.open(SIMPLYBOOK_MEMBERSHIP_URL, '_blank', 'noopener');
   };
 
   if (!hasSubscription) {
     return (
-      <>
-        <MembershipModal
-          open={modalOpen}
-          onClose={handleModalClose}
-          tier={selectedTier}
-          member={member}
-        />
-        <div>
-          <h2
-            className="text-sm font-semibold mb-3 flex items-center gap-2"
-            style={{ color: 'var(--ea-midnight)' }}
+      <div>
+        <h2
+          className="text-sm font-semibold mb-3 flex items-center gap-2"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+          Member Passes
+        </h2>
+        <div className="space-y-2">
+          {/* Silver */}
+          <button
+            onClick={openSubscribePage}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
           >
-            <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-            Member Passes
-          </h2>
-          <div className="space-y-2">
-            {/* Silver */}
-            <button
-              onClick={() => { setSelectedTier('silver'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Silver Pass
-                </p>
-                <p className="text-[11px] text-gray-400">5 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $25/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-            {/* Gold */}
-            <button
-              onClick={() => { setSelectedTier('gold'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Silver Pass
+              </p>
+              <p className="text-[11px] text-gray-400">5 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $25/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
+          {/* Gold */}
+          <button
+            onClick={openSubscribePage}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Gold Pass
-                </p>
-                <p className="text-[11px] text-gray-400">10 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $50/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-          </div>
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Gold Pass
+              </p>
+              <p className="text-[11px] text-gray-400">10 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $50/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 
