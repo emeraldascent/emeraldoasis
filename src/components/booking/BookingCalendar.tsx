@@ -91,7 +91,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   // Calendar grid
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = useMemo(() => `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`, [today]);
 
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < firstDayOfMonth; i++) calendarDays.push(null);
