@@ -37,8 +37,7 @@ async function callApi(token: string, method: string, params: unknown[]) {
     body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(`${method}: ${data.error.message}`);
-  return data.result;
+  return data; // Return full response so we can inspect errors
 }
 
 Deno.serve(async (req) => {
@@ -55,65 +54,74 @@ Deno.serve(async (req) => {
     const token = await getToken();
     console.log("Token obtained.");
 
-    // Try to get membership/subscription info via available API methods
-    // First check what plugins are active
-    let plugins: string[] = [];
-    try {
-      const pluginList = await callApi(token, "isPluginActivated", ["membership"]);
-      console.log("Membership plugin active:", pluginList);
-      if (pluginList) plugins.push("membership");
-    } catch (e) {
-      console.log("Membership plugin check:", String(e));
-    }
+    // Get membership types to know Silver/Gold IDs
+    const membershipResult = await callApi(token, "getMembershipList", []);
+    const membershipTypes = membershipResult.result || [];
+    console.log(`Found ${membershipTypes.length} membership types`);
 
-    // Try getMembershipList to see available membership types
-    let membershipTypes: any = null;
-    try {
-      membershipTypes = await callApi(token, "getMembershipList", []);
-      console.log("Membership types:", JSON.stringify(membershipTypes));
-    } catch (e) {
-      console.log("getMembershipList:", String(e));
+    // Build membership ID -> tier map
+    const membershipTierMap = new Map<string, string>();
+    for (const m of membershipTypes) {
+      const name = (m.name || "").toLowerCase();
+      if (name.includes("gold")) membershipTierMap.set(String(m.id), "gold");
+      else if (name.includes("silver")) membershipTierMap.set(String(m.id), "silver");
     }
+    console.log("Membership tier map:", JSON.stringify(Object.fromEntries(membershipTierMap)));
 
-    // Try getClientMembershipList or similar
-    let clientMemberships: any = null;
-    const methodsToTry = [
-      "getClientMembershipList",
-      "getMembershipClientList", 
-      "getClientList",
+    // Try various method signatures for getClientMembershipList
+    const methodAttempts = [
+      // Try with no filter, maybe it returns all
+      { method: "getClientMembershipList", params: [null, null] },
+      { method: "getClientMembershipList", params: [{}] },
+      // Try getting by membership ID
+      ...Array.from(membershipTierMap.keys()).map(id => ({
+        method: "getClientMembershipList", params: [{ membership_id: id }]
+      })),
+      ...Array.from(membershipTierMap.keys()).map(id => ({
+        method: "getClientMembershipList", params: [id]
+      })),
+      // Try other methods
+      { method: "getMembershipClientList", params: [] },
+      { method: "getActiveMemberships", params: [] },
+      { method: "getClientMemberships", params: [] },
     ];
 
-    for (const method of methodsToTry) {
-      try {
-        clientMemberships = await callApi(token, method, []);
-        console.log(`${method} succeeded:`, JSON.stringify(clientMemberships).substring(0, 500));
+    let successfulResult: any = null;
+    let successfulMethod = "";
+
+    for (const attempt of methodAttempts) {
+      const result = await callApi(token, attempt.method, attempt.params);
+      console.log(`${attempt.method}(${JSON.stringify(attempt.params)}):`, 
+        result.error ? `ERROR: ${result.error.message}` : `OK: ${JSON.stringify(result.result).substring(0, 300)}`);
+      
+      if (!result.error && result.result) {
+        successfulResult = result.result;
+        successfulMethod = `${attempt.method}(${JSON.stringify(attempt.params)})`;
         break;
-      } catch (e) {
-        console.log(`${method} failed:`, String(e));
       }
     }
 
     // Build email -> tier map
     const activeSubscriptions = new Map<string, string>();
 
-    if (clientMemberships) {
-      const entries = Array.isArray(clientMemberships) 
-        ? clientMemberships 
-        : Object.values(clientMemberships);
+    if (successfulResult) {
+      console.log("Processing results from:", successfulMethod);
+      const entries = Array.isArray(successfulResult) 
+        ? successfulResult 
+        : Object.values(successfulResult);
       
       for (const entry of entries) {
         const e = entry as any;
-        if (!e.email && !e.client_email) continue;
         const email = (e.email || e.client_email || "").toLowerCase().trim();
-        if (!email) continue;
-
-        const entryStr = JSON.stringify(e).toLowerCase();
-        let tier: string | null = null;
-        if (entryStr.includes("gold")) tier = "gold";
-        else if (entryStr.includes("silver")) tier = "silver";
-
-        if (tier) {
-          activeSubscriptions.set(email, tier);
+        const membershipId = String(e.membership_id || e.membershipId || "");
+        
+        if (email && membershipTierMap.has(membershipId)) {
+          activeSubscriptions.set(email, membershipTierMap.get(membershipId)!);
+        } else if (email) {
+          // Try to detect tier from string content
+          const entryStr = JSON.stringify(e).toLowerCase();
+          if (entryStr.includes("gold")) activeSubscriptions.set(email, "gold");
+          else if (entryStr.includes("silver")) activeSubscriptions.set(email, "silver");
         }
       }
     }
@@ -139,7 +147,7 @@ Deno.serve(async (req) => {
       const activeTier = activeSubscriptions.get(email);
       const shouldBeActive = !!activeTier;
 
-      if (member.subscription_active !== shouldBeActive || member.subscription_tier !== activeTier) {
+      if (member.subscription_active !== shouldBeActive || member.subscription_tier !== (activeTier || null)) {
         console.log(`Updating ${email}: active=${shouldBeActive}, tier=${activeTier || "none"}`);
         updates.push(
           supabase
@@ -162,10 +170,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "Sync complete",
-        membership_types: membershipTypes,
+        membership_types: membershipTypes.map((m: any) => ({ id: m.id, name: m.name })),
+        successful_method: successfulMethod || "none",
         active_subscriptions: activeSubscriptions.size,
         records_updated: updatedCount,
-        methods_available: clientMemberships ? true : false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
