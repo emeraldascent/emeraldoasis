@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
 const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
@@ -25,21 +23,8 @@ async function getToken(): Promise<string> {
     }),
   });
   const data = await res.json();
-  if (data.error) throw new Error("Auth failed: " + data.error.message);
+  if (data.error) throw new Error("Auth: " + data.error.message);
   return data.result;
-}
-
-async function callAdmin(token: string, method: string, params: unknown[]) {
-  const res = await fetch(SIMPLYBOOK_ADMIN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Company-Login": SIMPLYBOOK_COMPANY,
-      "X-Token": token,
-    },
-    body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
-  });
-  return await res.json();
 }
 
 Deno.serve(async (req) => {
@@ -49,38 +34,59 @@ Deno.serve(async (req) => {
 
   try {
     const token = await getToken();
-    console.log("Token obtained.");
+    console.log("Token:", token);
 
-    // Probe many admin methods to find what this user can access
-    const methods = [
-      { method: "getCurrentUserDetails", params: [] },
-      { method: "getPluginList", params: [] },
-      { method: "getPluginStatuses", params: [] },
-      { method: "isPluginActivated", params: ["membership"] },
-      { method: "isPluginActivated", params: ["client"] },
-      { method: "getCompanyInfo", params: [] },
-      { method: "getEventList", params: [] },
-      { method: "getBookings", params: [] },
-      { method: "getClientList", params: [null, "client", null] },
-      { method: "getClient", params: ["1"] },
-      { method: "getMembershipList", params: [] },
+    // Try getServiceUrl to find the correct API URL
+    const urlRes = await fetch(SIMPLYBOOK_LOGIN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "getServiceUrl",
+        params: [SIMPLYBOOK_COMPANY],
+        id: 3,
+      }),
+    });
+    const urlData = await urlRes.json();
+    console.log("getServiceUrl:", JSON.stringify(urlData));
+    const serviceUrl = urlData.result;
+
+    // Now try admin calls with:
+    // 1. Standard admin URL
+    // 2. Service URL from getServiceUrl + /admin
+    // 3. Different X-Company-Login variations
+    const tests: { label: string; url: string; companyHeader: string }[] = [
+      { label: "standard", url: SIMPLYBOOK_ADMIN_URL, companyHeader: SIMPLYBOOK_COMPANY },
+      { label: "serviceUrl+admin", url: (serviceUrl || "https://user-api.simplybook.me") + "/admin", companyHeader: SIMPLYBOOK_COMPANY },
+      { label: "noCompanyHeader", url: SIMPLYBOOK_ADMIN_URL, companyHeader: "" },
     ];
 
-    const results: Record<string, string> = {};
+    const results: Record<string, any> = {};
 
-    for (const m of methods) {
-      const res = await callAdmin(token, m.method, m.params);
-      if (res.error) {
-        results[`${m.method}(${JSON.stringify(m.params)})`] = `ERROR: ${res.error.message}`;
-      } else {
-        const preview = JSON.stringify(res.result).slice(0, 500);
-        results[`${m.method}(${JSON.stringify(m.params)})`] = preview;
-      }
-      console.log(`${m.method}: ${res.error ? 'ERROR: ' + res.error.message : 'OK'}`);
+    for (const t of tests) {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-Token": token,
+      };
+      if (t.companyHeader) headers["X-Company-Login"] = t.companyHeader;
+
+      const res = await fetch(t.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "getEventList",
+          params: [],
+          id: 2,
+        }),
+      });
+      const data = await res.json();
+      results[t.label] = data.error ? `ERROR: ${data.error.message}` : `OK: ${JSON.stringify(data.result).slice(0, 300)}`;
+      console.log(`${t.label}: ${results[t.label]}`);
     }
 
     return new Response(
-      JSON.stringify({ success: true, results }),
+      JSON.stringify({ success: true, serviceUrl, results }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
