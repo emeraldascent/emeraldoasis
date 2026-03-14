@@ -213,56 +213,6 @@ export type Database = {
           },
         ]
       }
-      member_bookings: {
-        Row: {
-          id: string
-          member_id: string
-          simplybook_booking_id: string | null
-          service_id: number
-          service_name: string
-          booking_date: string
-          booking_time: string | null
-          guest_names: string | null
-          is_member_pass: boolean
-          status: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          member_id: string
-          simplybook_booking_id?: string | null
-          service_id: number
-          service_name: string
-          booking_date: string
-          booking_time?: string | null
-          guest_names?: string | null
-          is_member_pass?: boolean
-          status?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          member_id?: string
-          simplybook_booking_id?: string | null
-          service_id?: number
-          service_name?: string
-          booking_date?: string
-          booking_time?: string | null
-          guest_names?: string | null
-          is_member_pass?: boolean
-          status?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "member_bookings_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       members: {
         Row: {
           created_at: string
@@ -279,10 +229,7 @@ export type Database = {
           photo_url: string | null
           pma_agreed: boolean
           pma_agreed_at: string | null
-          simplybook_client_id: string | null
           source: string
-          subscription_active: boolean
-          subscription_tier: string | null
           updated_at: string
           user_id: string
           welcome_credits_issued: boolean
@@ -302,10 +249,7 @@ export type Database = {
           photo_url?: string | null
           pma_agreed?: boolean
           pma_agreed_at?: string | null
-          simplybook_client_id?: string | null
           source?: string
-          subscription_active?: boolean
-          subscription_tier?: string | null
           updated_at?: string
           user_id: string
           welcome_credits_issued?: boolean
@@ -325,10 +269,7 @@ export type Database = {
           photo_url?: string | null
           pma_agreed?: boolean
           pma_agreed_at?: string | null
-          simplybook_client_id?: string | null
           source?: string
-          subscription_active?: boolean
-          subscription_tier?: string | null
           updated_at?: string
           user_id?: string
           welcome_credits_issued?: boolean
