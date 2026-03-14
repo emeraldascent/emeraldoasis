@@ -51,6 +51,8 @@ var SITES = [
 
 var SYNC_TAG = "[EO-SYNC]";
 var SYNC_WINDOW_DAYS = 90;
+var WORK_START_HOUR = 7;  // 7 AM
+var WORK_END_HOUR = 21;   // 9 PM
 
 function syncAllSites() {
   for (var i = 0; i < SITES.length; i++) {
@@ -60,6 +62,28 @@ function syncAllSites() {
     } catch (e) {
       Logger.log("Failed " + SITES[i].name + ": " + e.message);
     }
+  }
+}
+
+// Run this ONCE to clean up old all-day [EO-SYNC] events before using the new version
+function cleanupOldSyncEvents() {
+  var now = new Date();
+  var futureDate = new Date(now.getTime() + SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  var pastDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  for (var i = 0; i < SITES.length; i++) {
+    var calendar = CalendarApp.getCalendarById(SITES[i].calendarId);
+    if (!calendar) continue;
+    
+    var events = calendar.getEvents(pastDate, futureDate);
+    var deleted = 0;
+    for (var j = 0; j < events.length; j++) {
+      if (events[j].getTitle().indexOf(SYNC_TAG) === 0) {
+        events[j].deleteEvent();
+        deleted++;
+      }
+    }
+    Logger.log("Cleaned " + deleted + " events from " + SITES[i].name);
   }
 }
 
@@ -75,6 +99,32 @@ function syncSite(site) {
     } catch (e) { Logger.log("Feed error: " + e.message); }
   }
 
+  // Expand multi-day bookings into per-day timed events (7AM-9PM)
+  var expandedEvents = [];
+  for (var x = 0; x < externalEvents.length; x++) {
+    var ext = externalEvents[x];
+    if (!ext.start || !ext.end) continue;
+    
+    if (ext.allDay) {
+      // Create a timed event for each day of the booking
+      var current = new Date(ext.start.getTime());
+      while (current < ext.end) {
+        var dayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate(), WORK_START_HOUR, 0, 0);
+        var dayEnd = new Date(current.getFullYear(), current.getMonth(), current.getDate(), WORK_END_HOUR, 0, 0);
+        expandedEvents.push({
+          uid: ext.uid + "_" + current.toISOString().substr(0, 10),
+          summary: ext.summary,
+          start: dayStart,
+          end: dayEnd,
+          allDay: false
+        });
+        current.setDate(current.getDate() + 1);
+      }
+    } else {
+      expandedEvents.push(ext);
+    }
+  }
+
   var now = new Date();
   var futureDate = new Date(now.getTime() + SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   var existingEvents = calendar.getEvents(now, futureDate);
@@ -88,25 +138,21 @@ function syncSite(site) {
   }
 
   var processedUids = {};
-  for (var j = 0; j < externalEvents.length; j++) {
-    var ext = externalEvents[j];
-    if (!ext.start || !ext.end) continue;
-    if (ext.end < now || ext.start > futureDate) continue;
+  for (var j = 0; j < expandedEvents.length; j++) {
+    var ev = expandedEvents[j];
+    if (!ev.start || !ev.end) continue;
+    if (ev.end < now || ev.start > futureDate) continue;
 
-    var uid = ext.uid || (ext.start.getTime() + "-" + ext.summary);
+    var uid = ev.uid || (ev.start.getTime() + "-" + ev.summary);
     processedUids[uid] = true;
 
     if (existingMap[uid]) {
-      var expected = SYNC_TAG + " " + (ext.summary || "Blocked");
+      var expected = SYNC_TAG + " " + (ev.summary || "Blocked");
       if (existingMap[uid].getTitle() !== expected) existingMap[uid].setTitle(expected);
     } else {
       try {
-        var title = SYNC_TAG + " " + (ext.summary || "Blocked");
-        if (ext.allDay) {
-          calendar.createAllDayEvent(title, ext.start, ext.end, {description: uid});
-        } else {
-          calendar.createEvent(title, ext.start, ext.end, {description: uid});
-        }
+        var title = SYNC_TAG + " " + (ev.summary || "Blocked");
+        calendar.createEvent(title, ev.start, ev.end, {description: uid});
       } catch (e) { Logger.log("Create error: " + e.message); }
     }
   }
