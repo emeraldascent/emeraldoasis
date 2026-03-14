@@ -2,3 +2,6 @@ project_id = "spvwavyrvqpnslowlhig"
 
 [functions.send-reset-email]
 verify_jwt = false
+
+[functions.simplybook-bookings]
+verify_jwt = false
