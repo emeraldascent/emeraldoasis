@@ -144,7 +144,7 @@ export function Book({ member, badgeStatus }: BookProps) {
         {/* Member Passes */}
         <MemberPassSection
           services={MEMBER_PASSES}
-          memberEmail={member.email}
+          member={member}
           onSelect={setSelectedService}
         />
 
@@ -224,66 +224,56 @@ function MembershipModal({
   );
 }
 
+const PASS_LIMITS = { silver: 5, gold: 10 } as const;
+const MEMBER_PASS_SERVICE_IDS = [20, 21];
+
 function MemberPassSection({
   services,
-  memberEmail,
+  member,
   onSelect,
 }: {
   services: ServiceCard[];
-  memberEmail: string;
+  member: Member;
   onSelect: (s: ServiceCard) => void;
 }) {
-  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
-  const [checking, setChecking] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<'silver' | 'gold'>('silver');
-  const [checkCount, setCheckCount] = useState(0);
+  const [passesUsed, setPassesUsed] = useState(0);
+  const [loadingUsage, setLoadingUsage] = useState(true);
 
+  const hasSubscription = member.subscription_active && member.subscription_tier;
+  const passLimit = member.subscription_tier ? PASS_LIMITS[member.subscription_tier] : 0;
+  const passesRemaining = Math.max(0, passLimit - passesUsed);
+
+  // Count member pass bookings this month
   useEffect(() => {
-    async function checkMembership() {
-      setChecking(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('simplybook-bookings', {
-          body: { action: 'check_membership', email: memberEmail },
-        });
-        if (!error && data && data.hasMembership) {
-          setHasSubscription(true);
-        } else {
-          setHasSubscription(false);
-        }
-      } catch {
-        setHasSubscription(false);
-      } finally {
-        setChecking(false);
-      }
+    if (!hasSubscription) { setLoadingUsage(false); return; }
+
+    async function fetchUsage() {
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const { count, error } = await supabase
+        .from('member_bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('member_id', member.id)
+        .eq('is_member_pass', true)
+        .eq('status', 'confirmed')
+        .gte('booking_date', monthStart);
+
+      if (!error && count !== null) setPassesUsed(count);
+      setLoadingUsage(false);
     }
-    checkMembership();
-  }, [memberEmail, checkCount]);
+    fetchUsage();
+  }, [member.id, hasSubscription]);
 
   const handleModalClose = (purchased: boolean) => {
     setModalOpen(false);
     if (purchased) {
-      // Re-check membership status after they say they purchased
-      setCheckCount((c) => c + 1);
+      // Reload the page to pick up subscription changes
+      // (Admin needs to mark subscription_active in Supabase after SimplyBook purchase)
+      window.location.reload();
     }
   };
-
-  if (checking) {
-    return (
-      <div>
-        <h2
-          className="text-sm font-semibold mb-3 flex items-center gap-2"
-          style={{ color: 'var(--ea-midnight)' }}
-        >
-          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-          Member Passes
-        </h2>
-        <div className="p-4 rounded-xl bg-white border border-gray-100 text-center">
-          <p className="text-xs text-gray-400">Checking subscription status...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!hasSubscription) {
     return (
@@ -356,13 +346,67 @@ function MemberPassSection({
     );
   }
 
+  // Has active subscription — show passes with usage counter
   return (
-    <ServiceSection
-      title="Member Passes"
-      icon={<Star size={16} style={{ color: 'var(--ea-emerald)' }} />}
-      services={services}
-      onSelect={onSelect}
-    />
+    <div>
+      <h2
+        className="text-sm font-semibold mb-3 flex items-center gap-2"
+        style={{ color: 'var(--ea-midnight)' }}
+      >
+        <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+        Member Passes
+        <span
+          className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full"
+          style={{
+            backgroundColor: passesRemaining > 0 ? '#F0FDF4' : '#FEF2F2',
+            color: passesRemaining > 0 ? 'var(--ea-emerald)' : '#DC2626',
+          }}
+        >
+          {loadingUsage ? '...' : `${passesRemaining} of ${passLimit} remaining`}
+        </span>
+      </h2>
+
+      {passesRemaining === 0 && !loadingUsage ? (
+        <div className="p-4 rounded-xl bg-white border border-red-100 text-center space-y-2">
+          <p className="text-sm font-medium text-red-600">
+            All {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} passes used this month
+          </p>
+          <p className="text-xs text-gray-400">
+            Passes reset on the 1st. You can still book regular day passes below.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {services.map((service) => (
+            <button
+              key={service.id}
+              onClick={() => onSelect(service)}
+              disabled={loadingUsage}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+              >
+                {service.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                  {service.name}
+                </p>
+                <p className="text-[11px] text-gray-400">{service.description}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+                  Included
+                </p>
+                <p className="text-[10px] text-gray-400">Book →</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

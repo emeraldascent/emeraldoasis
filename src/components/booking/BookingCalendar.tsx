@@ -142,7 +142,28 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
       });
 
       if (result?.id || result?.bookingId) {
-        setBookingId(String(result.id || result.bookingId));
+        const sbBookingId = String(result.id || result.bookingId);
+        setBookingId(sbBookingId);
+
+        // Log booking to Supabase for pass tracking
+        const isMemberPass = [20, 21].includes(service.id);
+        try {
+          await supabase.from('member_bookings').insert({
+            member_id: member.id,
+            simplybook_booking_id: sbBookingId,
+            service_id: service.id,
+            service_name: service.name,
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            guest_names: guestNames,
+            is_member_pass: isMemberPass,
+            status: 'confirmed',
+          });
+        } catch (logErr) {
+          console.warn('Failed to log booking to Supabase:', logErr);
+          // Non-blocking — SimplyBook booking succeeded
+        }
+
         setStep('success');
       } else {
         setError('Booking was not confirmed. Please try again or contact us.');

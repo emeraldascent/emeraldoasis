@@ -15,8 +15,25 @@ export interface Member {
   pma_agreed_at: string | null;
   source: string;
   welcome_credits_issued: boolean;
+  simplybook_client_id: string | null;
+  subscription_tier: 'silver' | 'gold' | null;
+  subscription_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface MemberBooking {
+  id: string;
+  member_id: string;
+  simplybook_booking_id: string | null;
+  service_id: number;
+  service_name: string;
+  booking_date: string;
+  booking_time: string | null;
+  guest_names: string | null;
+  is_member_pass: boolean;
+  status: 'confirmed' | 'cancelled';
+  created_at: string;
 }
 
 export interface CheckIn {
