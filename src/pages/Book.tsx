@@ -160,7 +160,7 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership page
+// SimplyBook membership — opens in popup window, auto-syncs on close
 
 function MembershipModal({
   open,
@@ -173,19 +173,12 @@ function MembershipModal({
   tier: 'silver' | 'gold';
   member: Member | null;
 }) {
-  const label = tier === 'silver' ? 'Silver' : 'Gold';
-
   useEffect(() => {
     if (!open) return;
 
+    let popupClosed = false;
 
     const initWidget = () => {
-      const container = document.getElementById('sb-membership-modal-container');
-      if (container) {
-        container.innerHTML = ''; // Clean up before re-init
-      }
-
-      // Pre-fill client details if member exists
       const predefinedClient = member ? {
         client: {
           name: `${member.first_name || ''} ${member.last_name || ''}`.trim() || undefined,
@@ -194,10 +187,9 @@ function MembershipModal({
         }
       } : {};
 
-      // If SimplybookWidget exists globally, initialize it targeting our container
       if ((window as any).SimplybookWidget) {
         new (window as any).SimplybookWidget({
-          widget_type: 'membership',
+          widget_type: 'button',
           url: 'https://emeraldoasiscamp.simplybook.me',
           theme: 'air',
           theme_settings: {
@@ -209,7 +201,6 @@ function MembershipModal({
             display_item_mode: 'block',
             booking_nav_bg_color: '#e8ece2',
             body_bg_color: '#ffffff',
-            sb_review_image: '',
             dark_font_color: '#101820',
             light_font_color: '#ffffff',
             btn_color_1: '#288c6f',
@@ -227,8 +218,16 @@ function MembershipModal({
             allow_switch_to_ada: 0,
             predefined: predefinedClient,
           },
-          container_id: 'sb-membership-modal-container',
+          button_custom_id: 'sb-membership-popup-trigger',
+          button_position: 'right',
+          button_only_on_start: true,
         });
+
+        // Auto-click the widget button after a short delay
+        setTimeout(() => {
+          const btn = document.getElementById('sb-membership-popup-trigger');
+          if (btn) btn.click();
+        }, 500);
       }
     };
 
@@ -242,61 +241,30 @@ function MembershipModal({
       initWidget();
     }
 
-    return () => {
-      // Clean up widget DOM if unmounting
-      const container = document.getElementById('sb-membership-modal-container');
-      if (container) {
-        container.innerHTML = '';
+    // Listen for popup close / focus return — trigger sync
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && open && !popupClosed) {
+        popupClosed = true;
+        onClose(true);
       }
     };
-  }, [open]);
 
-  if (!open) return null;
+    // Small delay before listening so we don't fire immediately
+    const listenerId = setTimeout(() => {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }, 2000);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => onClose(false)}
-      />
-      {/* Modal */}
-      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-xl flex flex-col" style={{ height: '85vh', maxHeight: '700px' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-none">
-          <h3
-            className="text-sm font-semibold"
-            style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}
-          >
-            Subscribe to {label} Pass
-          </h3>
-          <button
-            onClick={() => onClose(false)}
-            className="text-gray-400 hover:text-gray-600 text-lg font-medium px-2"
-          >
-            ✕
-          </button>
-        </div>
-        
-        {/* SimplyBook official widget container */}
-        <div 
-          id="sb-membership-modal-container" 
-          className="w-full flex-grow overflow-y-auto bg-white"
-        />
+    return () => {
+      clearTimeout(listenerId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      // Clean up any injected widget elements
+      const btn = document.getElementById('sb-membership-popup-trigger');
+      if (btn) btn.remove();
+    };
+  }, [open, member, onClose, tier]);
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex-none">
-          <button
-            onClick={() => onClose(true)}
-            className="w-full py-2.5 rounded-lg text-sm font-medium text-white"
-            style={{ backgroundColor: 'var(--ea-emerald)' }}
-          >
-            I've completed my subscription →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  // No visible modal — the popup opens externally
+  return null;
 }
 
 const PASS_LIMITS = { silver: 5, gold: 10 } as const;
