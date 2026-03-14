@@ -529,18 +529,23 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             </div>
 
             <Button
-              onClick={handleBook}
+              onClick={handleProceedToPayment}
               disabled={loading}
               className="w-full h-12 text-white font-medium rounded-xl text-sm"
               style={{ backgroundColor: 'var(--ea-emerald)' }}
             >
-              {loading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                `Confirm Booking · ${service.price}`
-              )}
+              Proceed to Payment · {service.price}
             </Button>
           </div>
+        )}
+
+        {/* PAYMENT STEP */}
+        {step === 'payment' && selectedDate && selectedTime && (
+          <PaymentForm
+            amount={service.price}
+            onPaymentSuccess={handlePaymentSuccess}
+            loading={loading}
+          />
         )}
       </div>
     </div>
