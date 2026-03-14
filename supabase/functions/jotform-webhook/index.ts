@@ -10,6 +10,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Validate webhook secret (pass as ?secret=... in the JotForm webhook URL)
+  const url = new URL(req.url);
+  const secret = url.searchParams.get("secret");
+  const expectedSecret = Deno.env.get("JOTFORM_WEBHOOK_SECRET");
+  if (expectedSecret && secret !== expectedSecret) {
+    console.error("Invalid webhook secret");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const contentType = req.headers.get("content-type") || "";
     let formData: Record<string, string> = {};
