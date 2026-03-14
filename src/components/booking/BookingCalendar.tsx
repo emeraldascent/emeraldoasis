@@ -165,11 +165,11 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
           await supabase.from('member_bookings').insert({
             member_id: member.id,
             simplybook_booking_id: sbBookingId,
-            service_id: service.id,
+            service_id: String(service.id),
             service_name: service.name,
             booking_date: selectedDate,
             booking_time: selectedTime,
-            guest_names: guestNames,
+            guest_names: guestNames ? [guestNames] : null,
             is_member_pass: isMemberPass,
             status: 'confirmed',
           });

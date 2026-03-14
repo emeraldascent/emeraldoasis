@@ -20,11 +20,12 @@ const MONTH_NAMES = [
 ];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function getServiceIcon(serviceId: number) {
-  if ([11, 12, 13, 14].includes(serviceId)) return <Tent size={12} />;
-  if ([8, 10].includes(serviceId)) return <Users size={12} />;
-  if ([9].includes(serviceId)) return <Tent size={12} />;
-  if ([20, 21].includes(serviceId)) return <Star size={12} />;
+function getServiceIcon(serviceId: string | null) {
+  const id = Number(serviceId);
+  if ([11, 12, 13, 14].includes(id)) return <Tent size={12} />;
+  if ([8, 10].includes(id)) return <Users size={12} />;
+  if ([9].includes(id)) return <Tent size={12} />;
+  if ([20, 21].includes(id)) return <Star size={12} />;
   return <Sun size={12} />;
 }
 
