@@ -5,7 +5,7 @@ import { BookingGrid } from '../components/dashboard/BookingGrid';
 import { UpcomingCalendar } from '../components/dashboard/UpcomingCalendar';
 import { PropertyStatus } from '../components/dashboard/PropertyStatus';
 import { QuickLinks } from '../components/dashboard/QuickLinks';
-import { Droplets, ShoppingBag, Smartphone } from 'lucide-react';
+import { Droplets, ShoppingBag, Smartphone, Star } from 'lucide-react';
 
 const LOGO_URL =
   '/ea-logo.jpg';
@@ -79,6 +79,31 @@ export function Dashboard({ member, badgeStatus }: DashboardProps) {
                 </div>
               </div>
             </div>
+
+            {/* Oasis Pass upgrade — only show if no active subscription */}
+            {!member.subscription_active && (
+              <button
+                onClick={() => navigate('/book')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border transition-colors hover:border-gray-200"
+                style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
+                >
+                  <Star size={18} />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                    Upgrade to an Oasis Pass
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    Silver (5 visits/mo) or Gold (10 visits/mo) — save on every visit
+                  </p>
+                </div>
+                <span className="text-gray-300 shrink-0">→</span>
+              </button>
+            )}
 
             {/* Booking grid */}
             <BookingGrid onBook={() => navigate('/book')} />
