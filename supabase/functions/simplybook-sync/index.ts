@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Authenticating with SimplyBook API User Key...");
+    console.log("Authenticating with SimplyBook admin credentials...");
     const token = await getAdminToken();
     console.log("Session token obtained!");
 
