@@ -10,27 +10,41 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") || Deno.env.get("SIMPLYBOOK_API_KEY");
-  if (!apiUserKey) {
-    throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY (or SIMPLYBOOK_API_KEY) secret.");
+  const candidateKeys = [
+    { name: "SIMPLYBOOK_ADMIN_API_KEY", value: Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") },
+    { name: "SIMPLYBOOK_API_KEY", value: Deno.env.get("SIMPLYBOOK_API_KEY") },
+  ].filter((entry): entry is { name: string; value: string } => Boolean(entry.value));
+
+  if (candidateKeys.length === 0) {
+    throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY and SIMPLYBOOK_API_KEY secrets.");
   }
 
-  const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "getToken",
-      params: [SIMPLYBOOK_COMPANY, apiUserKey],
-      id: 1,
-    }),
-  });
+  const authErrors: string[] = [];
 
-  const data = await res.json();
-  console.log("getToken response:", JSON.stringify(data));
-  if (data.error) throw new Error("Auth failed: " + data.error.message);
-  if (!data.result) throw new Error("Auth failed: empty token from getToken");
-  return data.result;
+  for (const candidate of candidateKeys) {
+    const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "getToken",
+        params: [SIMPLYBOOK_COMPANY, candidate.value],
+        id: 1,
+      }),
+    });
+
+    const data = await res.json();
+    console.log(`getToken response (${candidate.name}):`, JSON.stringify(data));
+
+    if (!data.error && data.result) {
+      console.log(`Authenticated with ${candidate.name}.`);
+      return data.result;
+    }
+
+    authErrors.push(`${candidate.name}: ${data?.error?.message || "empty token"}`);
+  }
+
+  throw new Error(`Auth failed for all API keys. ${authErrors.join(" | ")}`);
 }
 
 async function callAdminApi(token: string, method: string, params: unknown[]) {
