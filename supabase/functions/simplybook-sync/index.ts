@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
@@ -11,22 +10,26 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const password = Deno.env.get("SIMPLYBOOK_ADMIN_PASSWORD");
-  if (!password) throw new Error("Missing SIMPLYBOOK_ADMIN_PASSWORD secret.");
+  const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") || Deno.env.get("SIMPLYBOOK_API_KEY");
+  if (!apiUserKey) {
+    throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY (or SIMPLYBOOK_API_KEY) secret.");
+  }
 
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
-      method: "getUserToken",
-      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, password],
+      method: "getToken",
+      params: [SIMPLYBOOK_COMPANY, apiUserKey],
       id: 1,
     }),
   });
+
   const data = await res.json();
-  console.log("getUserToken response:", JSON.stringify(data));
+  console.log("getToken response:", JSON.stringify(data));
   if (data.error) throw new Error("Auth failed: " + data.error.message);
+  if (!data.result) throw new Error("Auth failed: empty token from getToken");
   return data.result;
 }
 
@@ -40,6 +43,7 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
     },
     body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
+
   const data = await res.json();
   if (data.error) throw new Error(`${method}: ${data.error.message}`);
   return data.result;
@@ -51,9 +55,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Authenticating with SimplyBook admin credentials...");
+    console.log("Authenticating with SimplyBook API User Key...");
     const token = await getAdminToken();
-    console.log("Session token obtained!");
+    console.log("Session token obtained.");
 
     console.log("Fetching client list...");
     const clientsRaw = await callAdminApi(token, "getClientList", [null, "client", null]);
@@ -61,10 +65,8 @@ Deno.serve(async (req) => {
     const clients: any[] = Object.values(clientMap);
     console.log(`Found ${clients.length} clients.`);
 
-    // Build email -> tier map
     const activeSubscriptions = new Map<string, string>();
 
-    // Check each client's membership
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -76,32 +78,30 @@ Deno.serve(async (req) => {
 
     const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
 
-    // For each SimplyBook client that matches a member, check memberships
     for (const c of clients) {
       if (!c.email) continue;
       const email = c.email.toLowerCase().trim();
       if (!memberEmails.has(email)) continue;
 
-      // Check client data for membership indicators
       const clientStr = JSON.stringify(c).toLowerCase();
       if (clientStr.includes("gold") || clientStr.includes("oasis pass - gold")) {
         activeSubscriptions.set(email, "gold");
         continue;
-      } else if (clientStr.includes("silver") || clientStr.includes("oasis pass - silver")) {
+      }
+      if (clientStr.includes("silver") || clientStr.includes("oasis pass - silver")) {
         activeSubscriptions.set(email, "silver");
         continue;
       }
 
-      // Try per-client membership lookup
       try {
         const memberships = await callAdminApi(token, "getClientMembershipList", [String(c.id)]);
-        if (memberships) {
-          const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
-          for (const m of entries) {
-            const mName = String((m as any).name || "").toLowerCase();
-            if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
-            else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
-          }
+        if (!memberships) continue;
+
+        const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
+        for (const m of entries) {
+          const mName = String((m as any).name || "").toLowerCase();
+          if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
+          else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
         }
       } catch (e) {
         console.log(`Membership check for ${email} (client ${c.id}): ${String(e)}`);
@@ -110,7 +110,6 @@ Deno.serve(async (req) => {
 
     console.log(`Active subscriptions: ${activeSubscriptions.size}`);
 
-    // Sync to Supabase
     let updatedCount = 0;
     const updates = [];
 
@@ -123,9 +122,10 @@ Deno.serve(async (req) => {
       if (member.subscription_active !== shouldBeActive || member.subscription_tier !== (activeTier || null)) {
         console.log(`Updating ${email}: active=${shouldBeActive}, tier=${activeTier || "none"}`);
         updates.push(
-          supabase.from("members")
+          supabase
+            .from("members")
             .update({ subscription_active: shouldBeActive, subscription_tier: activeTier || null })
-            .eq("id", member.id)
+            .eq("id", member.id),
         );
         updatedCount++;
       }
@@ -140,12 +140,13 @@ Deno.serve(async (req) => {
         active_subscriptions: activeSubscriptions.size,
         records_updated: updatedCount,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Sync error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
