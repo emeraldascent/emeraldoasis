@@ -1,8 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
-const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
 const corsHeaders = {
@@ -10,23 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAdminToken(): Promise<string> {
-  const password = Deno.env.get("SIMPLYBOOK_ADMIN_PASSWORD");
-  if (!password) throw new Error("Missing SIMPLYBOOK_ADMIN_PASSWORD secret.");
-
-  const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "getUserToken",
-      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, password],
-      id: 1,
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error("Admin auth failed: " + data.error.message);
-  return data.result;
+function getApiUserKey(): string {
+  const key = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
+  if (!key) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
+  return key;
 }
 
 async function callAdminApi(token: string, method: string, params: unknown[]) {
