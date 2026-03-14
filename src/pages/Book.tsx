@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star, ExternalLink } from 'lucide-react';
 import { BookingCalendar } from '../components/booking/BookingCalendar';
+import { supabase } from '@/integrations/supabase/client';
 import type { Member, BadgeStatus } from '../lib/types';
 
 interface ServiceCard {
@@ -141,10 +142,9 @@ export function Book({ member, badgeStatus }: BookProps) {
         />
 
         {/* Member Passes */}
-        <ServiceSection
-          title="Member Passes"
-          icon={<Star size={16} style={{ color: 'var(--ea-emerald)' }} />}
+        <MemberPassSection
           services={MEMBER_PASSES}
+          memberEmail={member.email}
           onSelect={setSelectedService}
         />
 
@@ -157,6 +157,101 @@ export function Book({ member, badgeStatus }: BookProps) {
         />
       </div>
     </div>
+  );
+}
+
+const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
+
+function MemberPassSection({
+  services,
+  memberEmail,
+  onSelect,
+}: {
+  services: ServiceCard[];
+  memberEmail: string;
+  onSelect: (s: ServiceCard) => void;
+}) {
+  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    async function checkMembership() {
+      try {
+        const { data, error } = await supabase.functions.invoke('simplybook-bookings', {
+          body: { action: 'check_membership', email: memberEmail },
+        });
+        if (!error && data && data.hasMembership) {
+          setHasSubscription(true);
+        } else {
+          setHasSubscription(false);
+        }
+      } catch {
+        setHasSubscription(false);
+      } finally {
+        setChecking(false);
+      }
+    }
+    checkMembership();
+  }, [memberEmail]);
+
+  if (checking) {
+    return (
+      <div>
+        <h2
+          className="text-sm font-semibold mb-3 flex items-center gap-2"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+          Member Passes
+        </h2>
+        <div className="p-4 rounded-xl bg-white border border-gray-100 text-center">
+          <p className="text-xs text-gray-400">Checking subscription status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasSubscription) {
+    return (
+      <div>
+        <h2
+          className="text-sm font-semibold mb-3 flex items-center gap-2"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+          Member Passes
+        </h2>
+        <div className="p-4 rounded-xl bg-white border border-gray-100 space-y-3">
+          <div className="text-center">
+            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+              Silver & Gold Pass Access
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Get included day passes with a Silver ($25/mo · 5 passes) or Gold ($50/mo · 10 passes) subscription
+            </p>
+          </div>
+          <a
+            href={SIMPLYBOOK_MEMBERSHIP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
+            style={{ backgroundColor: 'var(--ea-spirulina)' }}
+          >
+            Upgrade to Silver or Gold
+            <ExternalLink size={14} />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ServiceSection
+      title="Member Passes"
+      icon={<Star size={16} style={{ color: 'var(--ea-emerald)' }} />}
+      services={services}
+      onSelect={onSelect}
+    />
   );
 }
 

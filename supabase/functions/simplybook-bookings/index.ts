@@ -92,6 +92,48 @@ serve(async (req) => {
       });
     }
 
+    // Check if a client has an active Silver/Gold membership
+    if (action === "check_membership") {
+      const { email } = body;
+      if (!email) {
+        return new Response(JSON.stringify({ hasMembership: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get client list and find by email
+      try {
+        const clients = await callApi(token, "getClientList", [email]);
+        let hasMembership = false;
+
+        // Check if any client matching this email has an active membership
+        if (clients && typeof clients === "object") {
+          for (const clientId of Object.keys(clients)) {
+            const memberships = await callApi(token, "getClientMembershipList", [clientId]);
+            if (memberships && Array.isArray(memberships) && memberships.length > 0) {
+              // Check if any membership is currently active
+              const now = new Date();
+              for (const m of memberships) {
+                if (m.is_active === "1" || m.is_active === true) {
+                  hasMembership = true;
+                  break;
+                }
+              }
+            }
+            if (hasMembership) break;
+          }
+        }
+
+        return new Response(JSON.stringify({ hasMembership }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch {
+        return new Response(JSON.stringify({ hasMembership: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Confirm a booking (some setups require confirmation after book)
     if (action === "confirm") {
       const { bookingId } = body;
