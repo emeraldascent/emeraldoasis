@@ -19,6 +19,11 @@ interface BookingCalendarProps {
 
 type Step = 'date' | 'time' | 'confirm' | 'success';
 
+// Campsite service IDs — these get check-in/check-out treatment, not hourly time slots
+const CAMPSITE_IDS = [8, 9, 10, 11, 12, 13, 14];
+const CAMPSITE_CHECKIN = '2:00 PM';
+const CAMPSITE_CHECKOUT = '11:00 AM';
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -105,13 +110,22 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   const getDayKey = (day: number) =>
     `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+  const isCampsite = CAMPSITE_IDS.includes(service.id);
+
   const handleDateSelect = (day: number) => {
     const key = getDayKey(day);
     if (key < todayStr) return;
     if (!timeSlots[key] || timeSlots[key].length === 0) return;
     setSelectedDate(key);
-    setSelectedTime(null);
-    setStep('time');
+
+    if (isCampsite) {
+      // Campsites auto-select the single time slot (usually 12:00) and skip to confirm
+      setSelectedTime(timeSlots[key][0]);
+      setStep('confirm');
+    } else {
+      setSelectedTime(null);
+      setStep('time');
+    }
   };
 
   const handleTimeSelect = (time: string) => {
@@ -207,8 +221,17 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
           </h2>
           <div className="text-sm text-gray-600 space-y-1">
             <p className="font-medium">{service.name}</p>
-            <p>{selectedDate && formatDate(selectedDate)}</p>
-            <p>{selectedTime && formatTime(selectedTime)}</p>
+            {isCampsite ? (
+              <>
+                <p>Check-in: {selectedDate && formatDate(selectedDate)} · {CAMPSITE_CHECKIN}</p>
+                <p>Check-out: {CAMPSITE_CHECKOUT} next day</p>
+              </>
+            ) : (
+              <>
+                <p>{selectedDate && formatDate(selectedDate)}</p>
+                <p>{selectedTime && formatTime(selectedTime)}</p>
+              </>
+            )}
           </div>
           <p className="text-xs text-gray-400">
             A confirmation has been sent to {member.email}
@@ -232,7 +255,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              if (step === 'confirm') setStep('time');
+              if (step === 'confirm' && isCampsite) { setStep('date'); setSelectedDate(null); }
+              else if (step === 'confirm') setStep('time');
               else if (step === 'time') { setStep('date'); setSelectedDate(null); }
               else onBack();
             }}
@@ -248,7 +272,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
               {service.name}
             </h1>
             <p className="text-[11px] text-gray-400">
-              {step === 'date' && 'Select a date'}
+              {step === 'date' && (isCampsite ? 'Select your check-in date' : 'Select a date')}
               {step === 'time' && selectedDate && `${formatDate(selectedDate)} · Pick a time`}
               {step === 'confirm' && 'Confirm your booking'}
             </p>
@@ -346,6 +370,17 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
                 <span className="text-[10px] text-gray-400">Unavailable</span>
               </div>
             </div>
+
+            {isCampsite && (
+              <div className="mt-3 p-3 rounded-lg text-center" style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                <p className="text-[11px] font-medium" style={{ color: 'var(--ea-emerald)' }}>
+                  Check-in {CAMPSITE_CHECKIN} · Check-out {CAMPSITE_CHECKOUT}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Each date = one night · Carry gear across creek
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -386,17 +421,36 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
               </p>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Experience</span>
+                  <span className="text-gray-500">{isCampsite ? 'Campsite' : 'Experience'}</span>
                   <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>{service.name}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Date</span>
-                  <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>{formatDate(selectedDate)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Time</span>
-                  <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>{formatTime(selectedTime)}</span>
-                </div>
+                {isCampsite ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Check-in</span>
+                      <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                        {formatDate(selectedDate)} · {CAMPSITE_CHECKIN}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Check-out</span>
+                      <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                        {CAMPSITE_CHECKOUT} next day
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Date</span>
+                      <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>{formatDate(selectedDate)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Time</span>
+                      <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>{formatTime(selectedTime)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Price</span>
                   <span className="font-bold" style={{ color: 'var(--ea-emerald)' }}>{service.price}</span>
