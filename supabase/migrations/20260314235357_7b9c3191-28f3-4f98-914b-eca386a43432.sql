@@ -1,0 +1,1 @@
+UPDATE members SET subscription_active = true, subscription_tier = 'silver' WHERE id = '19710387-3266-41eb-997e-5d084b22b37b';
