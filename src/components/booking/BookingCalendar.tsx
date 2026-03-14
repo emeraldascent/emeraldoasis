@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { supabase } from '@/integrations/supabase/client';
