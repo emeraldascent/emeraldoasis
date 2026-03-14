@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
+const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
@@ -10,17 +11,16 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const apiKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
-  if (!apiKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
+  const password = Deno.env.get("SIMPLYBOOK_ADMIN_PASSWORD");
+  if (!password) throw new Error("Missing SIMPLYBOOK_ADMIN_PASSWORD secret.");
 
-  // Use API User Key with getUserToken to get a session token
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "getUserToken",
-      params: [SIMPLYBOOK_COMPANY, apiKey],
+      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_LOGIN, password],
       id: 1,
     }),
   });
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Authenticating with SimplyBook API User Key...");
+    console.log("Authenticating with SimplyBook admin credentials...");
     const token = await getAdminToken();
     console.log("Session token obtained!");
 
