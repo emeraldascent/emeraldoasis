@@ -142,6 +142,16 @@ serve(async (req) => {
       });
     }
 
+    // Debug: get additional fields definition
+    if (action === "get_fields") {
+      const token = await getPublicToken();
+      const { eventId } = body;
+      const fields = await callPublicApi(token, "getAdditionalFields", [eventId]);
+      return new Response(JSON.stringify(fields), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "check_membership") {
       const { email } = body;
       return new Response(JSON.stringify({ hasMembership: !!email && false }), {
