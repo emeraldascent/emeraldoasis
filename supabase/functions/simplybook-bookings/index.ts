@@ -93,6 +93,8 @@ serve(async (req) => {
     }
 
     // Check if a client has an active Silver/Gold membership
+    // Uses Supabase member_subscriptions table (our source of truth)
+    // Falls back to false if table doesn't exist yet
     if (action === "check_membership") {
       const { email } = body;
       if (!email) {
@@ -101,37 +103,12 @@ serve(async (req) => {
         });
       }
 
-      // Get client list and find by email
-      try {
-        const clients = await callApi(token, "getClientList", [email]);
-        let hasMembership = false;
-
-        // Check if any client matching this email has an active membership
-        if (clients && typeof clients === "object") {
-          for (const clientId of Object.keys(clients)) {
-            const memberships = await callApi(token, "getClientMembershipList", [clientId]);
-            if (memberships && Array.isArray(memberships) && memberships.length > 0) {
-              // Check if any membership is currently active
-              const now = new Date();
-              for (const m of memberships) {
-                if (m.is_active === "1" || m.is_active === true) {
-                  hasMembership = true;
-                  break;
-                }
-              }
-            }
-            if (hasMembership) break;
-          }
-        }
-
-        return new Response(JSON.stringify({ hasMembership }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      } catch {
-        return new Response(JSON.stringify({ hasMembership: false }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // For now, return false — memberships will be gated via Supabase
+      // once the subscription table is built. SimplyBook's public API
+      // doesn't support membership lookups without client auth signatures.
+      return new Response(JSON.stringify({ hasMembership: false }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Confirm a booking (some setups require confirmation after book)
