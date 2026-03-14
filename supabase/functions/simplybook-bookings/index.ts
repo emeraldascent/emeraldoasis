@@ -120,10 +120,14 @@ serve(async (req) => {
       try {
         const clients = await callAdminApi(adminToken, "getClientList", []);
         const clientList: any[] = Array.isArray(clients) ? clients : Object.values(clients);
+        console.log(`Found ${clientList.length} clients, looking for ${clientData.email}`);
         const match = clientList.find(
           (c: any) => c.email && c.email.toLowerCase().trim() === clientData.email.toLowerCase().trim()
         );
-        if (match) clientId = match.id;
+        if (match) {
+          clientId = match.id;
+          console.log(`Matched client: id=${clientId}, email=${match.email}`);
+        }
       } catch (e) {
         console.log("Client lookup failed, will create new:", e);
       }
@@ -139,22 +143,19 @@ serve(async (req) => {
             phone: clientData.phone || "",
           }]);
           clientId = newClient?.id || newClient;
+          console.log(`Created client: id=${clientId}`);
         } catch (e) {
           console.error("Failed to create client:", e);
         }
       }
 
-      // Step 2: Book using admin API with client_id
-      const bookParams: any[] = [eventId, unitId, date, time];
-      if (clientId) {
-        // Admin book method: book(eventId, unitId, date, time, clientId, additionalFields, count)
-        bookParams.push(clientId, additionalFields || [], count || 1);
-      } else {
-        // Fallback: try with clientData
-        bookParams.push(clientData, additionalFields || [], count || 1);
-      }
+      console.log(`Booking with clientId=${clientId}, eventId=${eventId}, date=${date}, time=${time}`);
 
-      const result = await callAdminApi(adminToken, "book", bookParams);
+      // Step 2: Book using admin API — the admin book method signature is:
+      // book(eventId, unitId, date, time, clientId, additionalFields, count)
+      const result = await callAdminApi(adminToken, "book", [
+        eventId, unitId, date, time, clientId || clientData, additionalFields || [], count || 1,
+      ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
