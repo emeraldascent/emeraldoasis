@@ -3,6 +3,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { Crown } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -39,6 +40,20 @@ export function MemberRoster() {
     };
     fetchMembers();
   }, []);
+
+  const handleToggleSubscription = async (member: Member) => {
+    const newStatus = !member.subscription_active;
+    const newTier = newStatus ? (member.subscription_tier || 'silver') : null;
+    
+    const { error } = await supabase
+      .from('members')
+      .update({ subscription_active: newStatus, subscription_tier: newTier })
+      .eq('id', member.id);
+      
+    if (!error) {
+      setMembers(members.map(m => m.id === member.id ? { ...m, subscription_active: newStatus, subscription_tier: newTier } : m));
+    }
+  };
 
   const filtered = members.filter((m) => {
     if (filter === 'all') return true;
@@ -131,6 +146,15 @@ export function MemberRoster() {
                     {member.membership_tier} · Expires {endDate}
                   </p>
                 </div>
+
+                <button
+                  onClick={() => handleToggleSubscription(member)}
+                  title={`Toggle Oasis Pass Subscription (${member.subscription_active ? 'Active' : 'Inactive'})`}
+                  className={`p-1.5 rounded-full transition-colors ${member.subscription_active ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                >
+                  <Crown size={14} className={member.subscription_active ? 'fill-current' : ''} />
+                </button>
+
                 <Badge
                   variant={isActive ? 'default' : 'destructive'}
                   className="text-[9px] shrink-0"

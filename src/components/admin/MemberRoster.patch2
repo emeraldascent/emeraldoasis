@@ -1,0 +1,18 @@
+--- /Users/emeraldascent/.openclaw/workspace/emeraldoasis/src/components/admin/MemberRoster.tsx
++++ /Users/emeraldascent/.openclaw/workspace/emeraldoasis/src/components/admin/MemberRoster.tsx
+@@ -100,6 +100,20 @@
+                     {member.membership_tier} · Expires {endDate}
+                   </p>
+                 </div>
++                
++                <button
++                  onClick={() => handleToggleSubscription(member)}
++                  title={`Toggle Oasis Pass Subscription (${member.subscription_active ? 'Active' : 'Inactive'})`}
++                  className={`p-1.5 rounded-full transition-colors ${member.subscription_active ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
++                >
++                  <Crown size={14} className={member.subscription_active ? 'fill-current' : ''} />
++                </button>
++
+                 <Badge
+                   variant={isActive ? 'default' : 'destructive'}
+                   className="text-[9px] shrink-0"

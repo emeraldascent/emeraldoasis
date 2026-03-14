@@ -1,0 +1,29 @@
+--- /Users/emeraldascent/.openclaw/workspace/emeraldoasis/src/components/admin/MemberRoster.tsx
++++ /Users/emeraldascent/.openclaw/workspace/emeraldoasis/src/components/admin/MemberRoster.tsx
+@@ -4,6 +4,7 @@
+ import { Badge } from '../ui/badge';
+ import { Button } from '../ui/button';
+ import { supabase } from '@/integrations/supabase/client';
++import { Crown } from 'lucide-react';
+ import type { Member, BadgeStatus } from '../../lib/types';
+ 
+ function getBadgeStatus(member: Member): BadgeStatus {
+@@ -35,6 +36,18 @@
+     fetchMembers();
+   }, []);
+ 
++  const handleToggleSubscription = async (member: Member) => {
++    const newStatus = !member.subscription_active;
++    const newTier = newStatus ? (member.subscription_tier || 'silver') : null;
++    
++    const { error } = await supabase
++      .from('members')
++      .update({ subscription_active: newStatus, subscription_tier: newTier })
++      .eq('id', member.id);
++      
++    if (!error) {
++      setMembers(members.map(m => m.id === member.id ? { ...m, subscription_active: newStatus, subscription_tier: newTier } : m));
++    }
++  };
++
+   const filtered = members.filter((m) => {
