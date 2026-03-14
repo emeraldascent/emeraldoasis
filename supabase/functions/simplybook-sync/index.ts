@@ -10,6 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function getSupabase() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+}
+
 async function getAdminToken(): Promise<string> {
   const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
   if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
@@ -25,7 +32,6 @@ async function getAdminToken(): Promise<string> {
     }),
   });
   const data = await res.json();
-  console.log("getUserToken response:", JSON.stringify(data));
   if (data.error) throw new Error("Auth failed: " + data.error.message);
   if (!data.result) throw new Error("Auth failed: empty token");
   return data.result;
@@ -46,123 +52,184 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
   return data.result;
 }
 
+function detectTierFromClient(client: any): string | null {
+  const clientStr = JSON.stringify(client).toLowerCase();
+  if (clientStr.includes("gold")) return "gold";
+  if (clientStr.includes("silver")) return "silver";
+  return null;
+}
+
+async function detectTierFromMemberships(token: string, clientId: string): Promise<string | null> {
+  try {
+    const memberships = await callAdminApi(token, "getClientMembershipList", [clientId]);
+    if (!memberships) return null;
+    const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
+    for (const m of entries) {
+      const mName = String((m as any).name || "").toLowerCase();
+      if (mName.includes("gold")) return "gold";
+      if (mName.includes("silver")) return "silver";
+    }
+  } catch (e) {
+    console.log(`Membership check for client ${clientId}: ${e}`);
+  }
+  return null;
+}
+
+// ─── Single-member sync: check one member's subscription status ───
+async function syncSingleMember(email: string) {
+  const supabase = getSupabase();
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Get the member from our DB
+  const { data: member, error: memberError } = await supabase
+    .from("members")
+    .select("id, email, subscription_active, subscription_tier")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (memberError) throw new Error(memberError.message);
+  if (!member) throw new Error(`Member not found: ${normalizedEmail}`);
+
+  // Get admin token and client list from SimplyBook
+  const token = await getAdminToken();
+  const clientsRaw = await callAdminApi(token, "getClientList", []);
+  const clients: any[] = Array.isArray(clientsRaw) ? clientsRaw : Object.values(clientsRaw);
+
+  // Find matching client
+  const matchingClient = clients.find(
+    (c: any) => c.email && c.email.toLowerCase().trim() === normalizedEmail,
+  );
+
+  let detectedTier: string | null = null;
+
+  if (matchingClient) {
+    detectedTier = detectTierFromClient(matchingClient);
+    if (!detectedTier) {
+      detectedTier = await detectTierFromMemberships(token, String(matchingClient.id));
+    }
+  }
+
+  const shouldBeActive = !!detectedTier;
+
+  // Only update if changed
+  if (member.subscription_active !== shouldBeActive || member.subscription_tier !== (detectedTier || null)) {
+    console.log(`Updating ${normalizedEmail}: active=${shouldBeActive}, tier=${detectedTier || "none"}`);
+    const { error: updateError } = await supabase
+      .from("members")
+      .update({
+        subscription_active: shouldBeActive,
+        subscription_tier: detectedTier || null,
+      })
+      .eq("id", member.id);
+    if (updateError) throw new Error(updateError.message);
+  }
+
+  return {
+    email: normalizedEmail,
+    subscription_active: shouldBeActive,
+    subscription_tier: detectedTier || null,
+    updated: member.subscription_active !== shouldBeActive || member.subscription_tier !== (detectedTier || null),
+  };
+}
+
+// ─── Full sync: check all members ───
+async function syncAllMembers() {
+  const supabase = getSupabase();
+  const token = await getAdminToken();
+
+  // Get client list
+  const clientsRaw = await callAdminApi(token, "getClientList", []);
+  const clients: any[] = Array.isArray(clientsRaw) ? clientsRaw : Object.values(clientsRaw);
+  console.log(`Found ${clients.length} SimplyBook clients.`);
+
+  const { data: dbMembers, error: dbError } = await supabase
+    .from("members")
+    .select("id, email, subscription_active, subscription_tier");
+  if (dbError) throw new Error(dbError.message);
+
+  const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
+  const activeSubscriptions = new Map<string, string>();
+
+  for (const c of clients) {
+    if (!c.email) continue;
+    const email = c.email.toLowerCase().trim();
+    if (!memberEmails.has(email)) continue;
+
+    const tier = detectTierFromClient(c);
+    if (tier) {
+      activeSubscriptions.set(email, tier);
+      continue;
+    }
+
+    const membershipTier = await detectTierFromMemberships(token, String(c.id));
+    if (membershipTier) activeSubscriptions.set(email, membershipTier);
+  }
+
+  console.log(`Active subscriptions: ${activeSubscriptions.size}`);
+
+  let updatedCount = 0;
+  const updates = [];
+
+  for (const member of dbMembers) {
+    if (!member.email) continue;
+    const email = member.email.toLowerCase().trim();
+    const activeTier = activeSubscriptions.get(email);
+    const shouldBeActive = !!activeTier;
+
+    if (member.subscription_active !== shouldBeActive || member.subscription_tier !== (activeTier || null)) {
+      console.log(`Updating ${email}: active=${shouldBeActive}, tier=${activeTier || "none"}`);
+      updates.push(
+        supabase
+          .from("members")
+          .update({ subscription_active: shouldBeActive, subscription_tier: activeTier || null })
+          .eq("id", member.id),
+      );
+      updatedCount++;
+    }
+  }
+
+  if (updates.length > 0) await Promise.all(updates);
+
+  return {
+    simplybook_clients: clients.length,
+    active_subscriptions: activeSubscriptions.size,
+    records_updated: updatedCount,
+  };
+}
+
+// ─── Handler ───
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    console.log("Authenticating with SimplyBook API User Key...");
-    const token = await getAdminToken();
-    console.log("Admin token obtained.");
-
-    // Test: get event list first to confirm admin access works
-    const events = await callAdminApi(token, "getEventList", []);
-    console.log("getEventList OK:", JSON.stringify(events).slice(0, 200));
-
-    // Get client list
-    // Try different param formats for getClientList
-    let clients: any[] = [];
-    for (const params of [
-      [{ page: 1, on_page: 200 }],
-      [null, "client", null],
-      [],
-    ]) {
-      try {
-        const clientsRaw = await callAdminApi(token, "getClientList", params);
-        console.log("getClientList raw response type:", typeof clientsRaw, "params:", JSON.stringify(params));
-        console.log("getClientList preview:", JSON.stringify(clientsRaw).slice(0, 500));
-        const clientMap = clientsRaw?.data || clientsRaw || {};
-        clients = Array.isArray(clientMap) ? clientMap : Object.values(clientMap);
-        if (clients.length > 0) {
-          console.log(`Found ${clients.length} clients with params ${JSON.stringify(params)}`);
-          break;
-        }
-      } catch (e) {
-        console.log(`getClientList with params ${JSON.stringify(params)} failed: ${e}`);
-      }
-    }
-    console.log(`Total clients found: ${clients.length}`);
-
-    const activeSubscriptions = new Map<string, string>();
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data: dbMembers, error: dbError } = await supabase
-      .from("members")
-      .select("id, email, subscription_active, subscription_tier");
-    if (dbError) throw new Error(dbError.message);
-
-    const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
-
-    for (const c of clients) {
-      if (!c.email) continue;
-      const email = c.email.toLowerCase().trim();
-      if (!memberEmails.has(email)) continue;
-
-      // Check client data for membership indicators
-      const clientStr = JSON.stringify(c).toLowerCase();
-      if (clientStr.includes("gold")) {
-        activeSubscriptions.set(email, "gold");
-        continue;
-      }
-      if (clientStr.includes("silver")) {
-        activeSubscriptions.set(email, "silver");
-        continue;
-      }
-
-      // Try per-client membership lookup
-      try {
-        const memberships = await callAdminApi(token, "getClientMembershipList", [String(c.id)]);
-        if (!memberships) continue;
-        const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
-        for (const m of entries) {
-          const mName = String((m as any).name || "").toLowerCase();
-          if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
-          else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
-        }
-      } catch (e) {
-        console.log(`Membership check for ${email} (client ${c.id}): ${String(e)}`);
-      }
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      // No body = full sync (e.g. cron call)
     }
 
-    console.log(`Active subscriptions: ${activeSubscriptions.size}`);
+    const { action, email } = body;
 
-    // Sync to database
-    let updatedCount = 0;
-    const updates = [];
-
-    for (const member of dbMembers) {
-      if (!member.email) continue;
-      const email = member.email.toLowerCase().trim();
-      const activeTier = activeSubscriptions.get(email);
-      const shouldBeActive = !!activeTier;
-
-      if (member.subscription_active !== shouldBeActive || member.subscription_tier !== (activeTier || null)) {
-        console.log(`Updating ${email}: active=${shouldBeActive}, tier=${activeTier || "none"}`);
-        updates.push(
-          supabase
-            .from("members")
-            .update({ subscription_active: shouldBeActive, subscription_tier: activeTier || null })
-            .eq("id", member.id),
-        );
-        updatedCount++;
-      }
+    // Single-member check (called from frontend after membership purchase)
+    if (action === "check_member" && email) {
+      console.log(`Single-member sync for: ${email}`);
+      const result = await syncSingleMember(email);
+      return new Response(JSON.stringify({ success: true, ...result }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (updates.length > 0) await Promise.all(updates);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        simplybook_clients: clients.length,
-        active_subscriptions: activeSubscriptions.size,
-        records_updated: updatedCount,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    // Full sync (called by cron or manually)
+    console.log("Running full membership sync...");
+    const result = await syncAllMembers();
+    return new Response(JSON.stringify({ success: true, ...result }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Sync error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
