@@ -160,7 +160,8 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership page — base URL loaded in iframe, then navigated to #membership on load
+// SimplyBook membership page
+const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
 
 function MembershipModal({
   open,
@@ -174,24 +175,6 @@ function MembershipModal({
   const label = tier === 'silver' ? 'Silver' : 'Gold';
 
   if (!open) return null;
-
-  // SimplyBook is a hash-routed SPA. Load the base URL first,
-  // then navigate to #membership after the iframe loads.
-  const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
-    const iframe = e.currentTarget;
-    try {
-      const currentSrc = iframe.contentWindow?.location.href || '';
-      // Only navigate if we're on the base page (not already on #membership)
-      if (!currentSrc.includes('#membership')) {
-        iframe.contentWindow?.location.replace(
-          'https://emeraldoasiscamp.simplybook.me/v2/#membership'
-        );
-      }
-    } catch {
-      // Cross-origin — can't read location, just set src directly
-      iframe.src = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -217,11 +200,10 @@ function MembershipModal({
             ✕
           </button>
         </div>
-        {/* SimplyBook iframe — load base URL, navigate to #membership on load */}
+        {/* SimplyBook iframe */}
         <iframe
-          src="https://emeraldoasiscamp.simplybook.me/v2/"
-          onLoad={handleIframeLoad}
-          className="w-full border-0"
+          src={SIMPLYBOOK_MEMBERSHIP_URL}
+          className="w-full border-0 bg-white"
           style={{ height: 'calc(100% - 96px)' }}
           allow="payment"
           title={`${label} Oasis Pass`}
