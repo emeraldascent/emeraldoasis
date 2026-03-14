@@ -291,7 +291,6 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         setBookingId(sbBookingId);
 
         // Log booking to backend for pass tracking
-        const isMemberPass = [20, 21].includes(service.id);
         try {
           await supabase.from('member_bookings').insert({
             member_id: member.id,
