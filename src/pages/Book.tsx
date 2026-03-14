@@ -254,7 +254,7 @@ function MembershipModal({
             <button
               onClick={() => {
                 window.open(
-                  'https://emeraldoasiscamp.simplybook.me/v2/#memberships',
+                  'https://emeraldoasiscamp.simplybook.me/v2/#membership',
                   'simplybook_membership',
                   'width=480,height=700,scrollbars=yes,resizable=yes,popup=yes'
                 );
