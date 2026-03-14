@@ -160,8 +160,10 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-const SIMPLYBOOK_SILVER_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership/2';
-const SIMPLYBOOK_GOLD_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership/11';
+// SimplyBook membership page — #membership shows both plans
+// Individual buy links use #membership/buy/{id}/{startDate} but the
+// listing page lets them choose and handles payment flow
+const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
 
 function MembershipModal({
   open,
@@ -172,7 +174,7 @@ function MembershipModal({
   onClose: (purchased: boolean) => void;
   tier: 'silver' | 'gold';
 }) {
-  const url = tier === 'silver' ? SIMPLYBOOK_SILVER_URL : SIMPLYBOOK_GOLD_URL;
+  const url = SIMPLYBOOK_MEMBERSHIP_URL;
   const label = tier === 'silver' ? 'Silver' : 'Gold';
 
   if (!open) return null;
