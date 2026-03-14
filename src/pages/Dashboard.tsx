@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Member, BadgeStatus } from '../lib/types';
 import { MemberBadge } from '../components/dashboard/MemberBadge';
 import { BookingGrid } from '../components/dashboard/BookingGrid';
+import { UpcomingCalendar } from '../components/dashboard/UpcomingCalendar';
 import { PropertyStatus } from '../components/dashboard/PropertyStatus';
 import { QuickLinks } from '../components/dashboard/QuickLinks';
 import { Droplets, ShoppingBag, Smartphone } from 'lucide-react';
@@ -81,6 +82,9 @@ export function Dashboard({ member, badgeStatus }: DashboardProps) {
 
             {/* Booking grid */}
             <BookingGrid onBook={() => navigate('/book')} />
+
+            {/* Upcoming events calendar */}
+            <UpcomingCalendar />
           </>
         )}
 

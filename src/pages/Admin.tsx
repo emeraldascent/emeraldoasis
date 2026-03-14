@@ -3,9 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { GateCheck } from '../components/admin/GateCheck';
 import { MemberRoster } from '../components/admin/MemberRoster';
 import { AdminOverview } from '../components/admin/AdminOverview';
+import { AdminCalendar } from '../components/admin/AdminCalendar';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Search, Users, BarChart3, Lock } from 'lucide-react';
+import { Search, Users, BarChart3, Calendar, Lock } from 'lucide-react';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || 'oasis2026';
 const ADMIN_EMAILS = ['emeraldoasiscamp@gmail.com', 'connor@emeraldascent.com'];
@@ -105,10 +106,14 @@ export function Admin({ userEmail }: AdminProps) {
         </h1>
 
         <Tabs defaultValue="gate" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 mb-4">
+          <TabsList className="w-full grid grid-cols-4 mb-4">
             <TabsTrigger value="gate" className="text-xs gap-1">
               <Search size={14} />
-              Gate Check
+              Gate
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs gap-1">
+              <Calendar size={14} />
+              Calendar
             </TabsTrigger>
             <TabsTrigger value="roster" className="text-xs gap-1">
               <Users size={14} />
@@ -116,12 +121,16 @@ export function Admin({ userEmail }: AdminProps) {
             </TabsTrigger>
             <TabsTrigger value="overview" className="text-xs gap-1">
               <BarChart3 size={14} />
-              Overview
+              Stats
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="gate">
             <GateCheck />
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <AdminCalendar />
           </TabsContent>
 
           <TabsContent value="roster">
