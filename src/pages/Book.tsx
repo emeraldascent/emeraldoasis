@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star, Loader2, Check } from 'lucide-react';
 import { BookingCalendar } from '../components/booking/BookingCalendar';
+import { PaymentForm } from '../components/booking/PaymentForm';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member, BadgeStatus } from '../lib/types';
 
@@ -160,124 +161,12 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership — opens in a popup window (not tab, not iframe)
+// ─── In-app membership purchase flow ───
 
-function MembershipModal({
-  open,
-  onClose,
-  member,
-}: {
-  open: boolean;
-  onClose: (purchased: boolean) => void;
-  tier: 'silver' | 'gold';
-  member: Member | null;
-}) {
-  const [syncing, setSyncing] = useState(false);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const memberRef = useRef(member);
-  memberRef.current = member;
+type PurchaseStep = 'select' | 'payment' | 'processing' | 'success';
 
-  useEffect(() => {
-    if (!open) return;
-
-    // Open SimplyBook memberships page in a sized popup window (not a tab)
-    const popup = window.open(
-      'https://emeraldoasiscamp.simplybook.me/v2/#membership',
-      'simplybook_membership',
-      'width=480,height=700,scrollbars=yes,resizable=yes,popup=yes'
-    );
-
-    // Poll to detect when user closes the popup
-    const pollTimer = setInterval(() => {
-      if (popup && popup.closed) {
-        clearInterval(pollTimer);
-        setSyncing(true);
-      }
-    }, 500);
-
-    return () => {
-      clearInterval(pollTimer);
-    };
-  }, [open]);
-
-  // When popup closes, sync membership then close modal
-  useEffect(() => {
-    if (!syncing) return;
-    let cancelled = false;
-
-    (async () => {
-      const m = memberRef.current;
-      if (m) {
-        try {
-          await supabase.functions.invoke('simplybook-sync', {
-            body: { action: 'check_member', email: m.email },
-          });
-        } catch (e) {
-          console.error('Membership sync error:', e);
-        }
-      }
-      if (!cancelled) {
-        setSyncing(false);
-        onCloseRef.current(true);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [syncing]);
-
-  if (!open) return null;
-
-  // Show a small overlay while popup is open or syncing
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={() => onCloseRef.current(false)} />
-      <div className="relative bg-white rounded-2xl p-6 max-w-xs mx-4 text-center space-y-3 shadow-xl">
-        {syncing ? (
-          <>
-            <div className="w-10 h-10 border-2 border-gray-200 border-t-emerald-500 rounded-full animate-spin mx-auto" />
-            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
-              Checking your subscription…
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
-              <Star size={22} style={{ color: 'var(--ea-emerald)' }} />
-            </div>
-            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
-              Complete your subscription in the popup window
-            </p>
-            <p className="text-xs text-gray-400">
-              When you're done, close the popup and we'll update your account.
-            </p>
-            <button
-              onClick={() => {
-                window.open(
-                  'https://emeraldoasiscamp.simplybook.me/v2/#membership',
-                  'simplybook_membership',
-                  'width=480,height=700,scrollbars=yes,resizable=yes,popup=yes'
-                );
-              }}
-              className="text-xs font-medium underline"
-              style={{ color: 'var(--ea-emerald)' }}
-            >
-              Reopen popup
-            </button>
-            <button
-              onClick={() => onCloseRef.current(false)}
-              className="block mx-auto text-xs text-gray-400 hover:text-gray-600"
-            >
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const PASS_LIMITS = { silver: 5, gold: 10 } as const;
+const PASS_LIMITS: Record<string, number> = { silver: 5, gold: 10 };
+const TIER_PRICES: Record<string, number> = { silver: 25, gold: 50 };
 
 function MemberPassSection({
   services,
@@ -288,13 +177,15 @@ function MemberPassSection({
   member: Member;
   onSelect: (s: ServiceCard) => void;
 }) {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [purchaseStep, setPurchaseStep] = useState<PurchaseStep>('select');
   const [selectedTier, setSelectedTier] = useState<'silver' | 'gold'>('silver');
   const [passesUsed, setPassesUsed] = useState(0);
   const [loadingUsage, setLoadingUsage] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const hasSubscription = member.subscription_active && member.subscription_tier;
-  const passLimit = member.subscription_tier ? PASS_LIMITS[member.subscription_tier] : 0;
+  const passLimit = member.subscription_tier ? PASS_LIMITS[member.subscription_tier] || 0 : 0;
   const passesRemaining = Math.max(0, passLimit - passesUsed);
 
   // Count member pass bookings this month
@@ -318,95 +209,194 @@ function MemberPassSection({
     fetchUsage();
   }, [member.id, hasSubscription]);
 
-  const handleModalClose = async (purchased: boolean) => {
-    setModalOpen(false);
-    if (purchased) {
-      // Immediately sync this member's subscription status from SimplyBook
-      try {
-        await supabase.functions.invoke('simplybook-sync', {
-          body: { action: 'check_member', email: member.email },
-        });
-      } catch (e) {
-        console.error('Membership sync error:', e);
-      }
-      // Reload to pick up the updated subscription status
-      window.location.reload();
+  const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }) => {
+    setPurchaseStep('processing');
+    setLoading(true);
+    setError('');
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('purchase-membership', {
+        body: {
+          opaqueData,
+          tier: selectedTier,
+          memberId: member.id,
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+        },
+      });
+
+      if (fnError) throw fnError;
+      if (!data?.success) throw new Error(data?.error || 'Purchase failed');
+
+      setPurchaseStep('success');
+
+      // Reload after short delay to pick up new subscription
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
+      console.error('Membership purchase failed:', err);
+      setError(err instanceof Error ? err.message : 'Purchase failed. Please try again.');
+      setPurchaseStep('payment');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!hasSubscription) {
+  // ── SUCCESS STATE ──
+  if (purchaseStep === 'success') {
     return (
-      <>
-        <MembershipModal
-          open={modalOpen}
-          onClose={handleModalClose}
-          tier={selectedTier}
-          member={member}
-        />
-        <div>
-          <h2
-            className="text-sm font-semibold mb-3 flex items-center gap-2"
-            style={{ color: 'var(--ea-midnight)' }}
-          >
-            <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-            Member Passes
-          </h2>
-          <div className="space-y-2">
-            {/* Silver */}
-            <button
-              onClick={() => { setSelectedTier('silver'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Silver Pass
-                </p>
-                <p className="text-[11px] text-gray-400">5 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $25/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-            {/* Gold */}
-            <button
-              onClick={() => { setSelectedTier('gold'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Gold Pass
-                </p>
-                <p className="text-[11px] text-gray-400">10 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $50/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-          </div>
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center space-y-3">
+        <div
+          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+          style={{ backgroundColor: '#F0FDF4' }}
+        >
+          <Check size={28} style={{ color: 'var(--ea-emerald)' }} />
         </div>
-      </>
+        <h3
+          className="text-base font-semibold"
+          style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--ea-midnight)' }}
+        >
+          {selectedTier === 'gold' ? 'Gold' : 'Silver'} Membership Activated!
+        </h3>
+        <p className="text-xs text-gray-400">
+          Your {PASS_LIMITS[selectedTier]} monthly passes are now available. Refreshing...
+        </p>
+      </div>
     );
   }
 
-  // Has active subscription — show passes with usage counter
+  // ── PAYMENT STEP ──
+  if (purchaseStep === 'payment' || purchaseStep === 'processing') {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setPurchaseStep('select'); setError(''); }}
+            className="text-xs font-medium underline"
+            style={{ color: 'var(--ea-emerald)' }}
+          >
+            ← Back
+          </button>
+          <h2
+            className="text-sm font-semibold flex items-center gap-2"
+            style={{ color: 'var(--ea-midnight)' }}
+          >
+            <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+            {selectedTier === 'gold' ? 'Gold' : 'Silver'} Membership — ${TIER_PRICES[selectedTier]}/mo
+          </h2>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Plan</span>
+            <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>
+              {selectedTier === 'gold' ? 'Gold' : 'Silver'} Pass
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Included passes</span>
+            <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>
+              {PASS_LIMITS[selectedTier]}/month
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Duration</span>
+            <span className="font-medium" style={{ color: 'var(--ea-midnight)' }}>30 days</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Total</span>
+            <span className="font-bold" style={{ color: 'var(--ea-emerald)' }}>
+              ${TIER_PRICES[selectedTier]}.00
+            </span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+            <p className="text-xs text-red-600">{error}</p>
+          </div>
+        )}
+
+        {purchaseStep === 'processing' ? (
+          <div className="flex items-center justify-center py-8 gap-2">
+            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ea-emerald)' }} />
+            <span className="text-sm text-gray-500">Activating your membership...</span>
+          </div>
+        ) : (
+          <PaymentForm
+            amount={`$${TIER_PRICES[selectedTier]}`}
+            onPaymentSuccess={handlePaymentSuccess}
+            loading={loading}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ── NO SUBSCRIPTION — SHOW PURCHASE OPTIONS ──
+  if (!hasSubscription) {
+    return (
+      <div>
+        <h2
+          className="text-sm font-semibold mb-3 flex items-center gap-2"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+          Member Passes
+        </h2>
+        <div className="space-y-2">
+          {/* Silver */}
+          <button
+            onClick={() => { setSelectedTier('silver'); setPurchaseStep('payment'); }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
+            >
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Silver Pass
+              </p>
+              <p className="text-[11px] text-gray-400">5 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $25/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
+          {/* Gold */}
+          <button
+            onClick={() => { setSelectedTier('gold'); setPurchaseStep('payment'); }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
+            >
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Gold Pass
+              </p>
+              <p className="text-[11px] text-gray-400">10 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $50/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── HAS ACTIVE SUBSCRIPTION — SHOW PASSES WITH USAGE ──
   return (
     <div>
       <h2
