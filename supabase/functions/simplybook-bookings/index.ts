@@ -113,26 +113,42 @@ serve(async (req) => {
       const adminToken = await getAdminToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
 
-      // Step 1: Find or create the client in SimplyBook
-      let clientId: string | number | null = null;
+      // Resolve unit ID — admin API requires it
+      let resolvedUnitId = unitId;
+      if (!resolvedUnitId) {
+        try {
+          const units = await callAdminApi(adminToken, "getUnitList", []);
+          const unitList: any[] = Array.isArray(units) ? units : Object.values(units);
+          console.log(`Available units: ${JSON.stringify(unitList.map((u: any) => ({ id: u.id, name: u.name })))}`);
+          // Try to find a unit that serves this event
+          const eventUnits = await callAdminApi(adminToken, "getUnitsByEvent", [eventId]);
+          const euList: any[] = Array.isArray(eventUnits) ? eventUnits : Object.values(eventUnits);
+          console.log(`Units for event ${eventId}: ${JSON.stringify(euList)}`);
+          if (euList.length > 0) {
+            resolvedUnitId = euList[0]?.id || euList[0];
+          } else if (unitList.length > 0) {
+            resolvedUnitId = unitList[0].id;
+          }
+        } catch (e) {
+          console.log("Unit lookup failed:", e);
+          // Try with unit 1 as fallback
+          resolvedUnitId = 1;
+        }
+      }
 
-      // Try to find existing client by email
+      // Find or create client
+      let clientId: string | number | null = null;
       try {
         const clients = await callAdminApi(adminToken, "getClientList", []);
         const clientList: any[] = Array.isArray(clients) ? clients : Object.values(clients);
-        console.log(`Found ${clientList.length} clients, looking for ${clientData.email}`);
         const match = clientList.find(
           (c: any) => c.email && c.email.toLowerCase().trim() === clientData.email.toLowerCase().trim()
         );
-        if (match) {
-          clientId = match.id;
-          console.log(`Matched client: id=${clientId}, email=${match.email}`);
-        }
+        if (match) clientId = match.id;
       } catch (e) {
-        console.log("Client lookup failed, will create new:", e);
+        console.log("Client lookup failed:", e);
       }
 
-      // If not found, create the client
       if (!clientId) {
         try {
           const nameParts = (clientData.name || "").split(" ");
@@ -143,17 +159,16 @@ serve(async (req) => {
             phone: clientData.phone || "",
           }]);
           clientId = newClient?.id || newClient;
-          console.log(`Created client: id=${clientId}`);
         } catch (e) {
           console.error("Failed to create client:", e);
         }
       }
 
-      console.log(`Booking with clientId=${clientId}, eventId=${eventId}, date=${date}, time=${time}`);
+      console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, client=${clientId}, date=${date}, time=${time}`);
 
-      // Admin API book signature: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
+      // Admin API: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
       const result = await callAdminApi(adminToken, "book", [
-        eventId, unitId || null, clientId, date, time, date, time, null, additionalFields || {}, count || 1,
+        eventId, resolvedUnitId, clientId, date, time, date, time, null, additionalFields || {}, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
