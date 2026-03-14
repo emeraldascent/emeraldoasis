@@ -300,7 +300,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              if (step === 'confirm' && isCampsite) { setStep('date'); setSelectedDate(null); }
+              if (step === 'payment') setStep('confirm');
+              else if (step === 'confirm' && isCampsite) { setStep('date'); setSelectedDate(null); }
               else if (step === 'confirm') setStep('time');
               else if (step === 'time') { setStep('date'); setSelectedDate(null); }
               else onBack();
