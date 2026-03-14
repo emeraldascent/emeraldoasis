@@ -225,7 +225,6 @@ function MembershipModal({
 }
 
 const PASS_LIMITS = { silver: 5, gold: 10 } as const;
-const MEMBER_PASS_SERVICE_IDS = [20, 21];
 
 function MemberPassSection({
   services,
