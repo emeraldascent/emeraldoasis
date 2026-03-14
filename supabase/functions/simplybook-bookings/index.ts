@@ -112,11 +112,24 @@ serve(async (req) => {
     if (action === "book") {
       const adminToken = await getAdminToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
-      const result = await callAdminApi(adminToken, "book", [
-        eventId, unitId, date, time,
-        clientData, additionalFields || [], count || 1,
-      ]);
-      return new Response(JSON.stringify(result), {
+      // Use admin token on public endpoint — same method signature, elevated privileges
+      const res = await fetch(SIMPLYBOOK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Company-Login": SIMPLYBOOK_COMPANY,
+          "X-User-Token": adminToken,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "book",
+          params: [eventId, unitId, date, time, clientData, additionalFields || [], count || 1],
+          id: 2,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      return new Response(JSON.stringify(data.result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
