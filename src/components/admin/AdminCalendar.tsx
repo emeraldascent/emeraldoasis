@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface Booking {
   id: string;
   service_name: string;
-  service_id: number;
+  service_id: string | null;
   booking_date: string;
   booking_time: string | null;
-  guest_names: string | null;
-  is_member_pass: boolean;
+  guest_names: string[] | null;
+  is_member_pass: boolean | null;
   status: string;
   member: { first_name: string; last_name: string; email: string } | null;
 }
