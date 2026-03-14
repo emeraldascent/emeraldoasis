@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
 const SIMPLYBOOK_ADMIN_LOGIN = "emeraldoasiscamp@gmail.com";
 const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
+const SIMPLYBOOK_PUBLIC_URL = "https://user-api.simplybook.me";
 const SIMPLYBOOK_ADMIN_URL = "https://user-api.simplybook.me/admin";
 
 const corsHeaders = {
@@ -10,11 +11,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function getAdminToken(): Promise<string> {
+async function getToken(): Promise<string> {
   const apiUserKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
   if (!apiUserKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
 
-  // Use getUserToken with the API User Key as the password — bypasses IP restrictions
+  // getUserToken with API User Key bypasses IP restrictions
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -33,8 +34,8 @@ async function getAdminToken(): Promise<string> {
   return data.result;
 }
 
-async function callAdminApi(token: string, method: string, params: unknown[]) {
-  const res = await fetch(SIMPLYBOOK_ADMIN_URL, {
+async function callApi(token: string, url: string, method: string, params: unknown[]) {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -45,8 +46,7 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
   });
 
   const data = await res.json();
-  if (data.error) throw new Error(`${method}: ${data.error.message}`);
-  return data.result;
+  return data;
 }
 
 Deno.serve(async (req) => {
@@ -55,17 +55,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Authenticating with SimplyBook API User Key...");
-    const token = await getAdminToken();
-    console.log("Session token obtained.");
-
-    console.log("Fetching client list...");
-    const clientsRaw = await callAdminApi(token, "getClientList", [null, "client", null]);
-    const clientMap = clientsRaw?.data || clientsRaw || {};
-    const clients: any[] = Object.values(clientMap);
-    console.log(`Found ${clients.length} clients.`);
-
-    const activeSubscriptions = new Map<string, string>();
+    console.log("Authenticating...");
+    const token = await getToken();
+    console.log("Token obtained.");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -73,43 +65,93 @@ Deno.serve(async (req) => {
 
     const { data: dbMembers, error: dbError } = await supabase
       .from("members")
-      .select("id, email, subscription_active, subscription_tier");
+      .select("id, email, subscription_active, subscription_tier, simplybook_client_id");
     if (dbError) throw new Error(dbError.message);
 
-    const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
+    // Step 1: Get available memberships from the public API
+    const membershipListRes = await callApi(token, SIMPLYBOOK_PUBLIC_URL, "getMembershipList", []);
+    console.log("getMembershipList:", JSON.stringify(membershipListRes));
 
-    for (const c of clients) {
-      if (!c.email) continue;
-      const email = c.email.toLowerCase().trim();
-      if (!memberEmails.has(email)) continue;
-
-      const clientStr = JSON.stringify(c).toLowerCase();
-      if (clientStr.includes("gold") || clientStr.includes("oasis pass - gold")) {
-        activeSubscriptions.set(email, "gold");
-        continue;
-      }
-      if (clientStr.includes("silver") || clientStr.includes("oasis pass - silver")) {
-        activeSubscriptions.set(email, "silver");
-        continue;
-      }
-
-      try {
-        const memberships = await callAdminApi(token, "getClientMembershipList", [String(c.id)]);
-        if (!memberships) continue;
-
-        const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
-        for (const m of entries) {
-          const mName = String((m as any).name || "").toLowerCase();
-          if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
-          else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
-        }
-      } catch (e) {
-        console.log(`Membership check for ${email} (client ${c.id}): ${String(e)}`);
+    // Step 2: Try admin getClientList first, fall back to public API
+    let clients: any[] = [];
+    const adminRes = await callApi(token, SIMPLYBOOK_ADMIN_URL, "getClientList", [null, "client", null]);
+    if (!adminRes.error) {
+      const clientMap = adminRes.result?.data || adminRes.result || {};
+      clients = Object.values(clientMap);
+      console.log(`Admin getClientList: ${clients.length} clients`);
+    } else {
+      console.log(`Admin getClientList denied: ${adminRes.error.message}`);
+      // Try public API method
+      const pubRes = await callApi(token, SIMPLYBOOK_PUBLIC_URL, "getClientList", [null, "client", null]);
+      if (!pubRes.error) {
+        const clientMap = pubRes.result?.data || pubRes.result || {};
+        clients = Object.values(clientMap);
+        console.log(`Public getClientList: ${clients.length} clients`);
+      } else {
+        console.log(`Public getClientList also denied: ${pubRes.error.message}`);
       }
     }
 
-    console.log(`Active subscriptions: ${activeSubscriptions.size}`);
+    const activeSubscriptions = new Map<string, string>();
 
+    if (clients.length > 0) {
+      // Match clients to members by email
+      const memberEmails = new Set(dbMembers.map((m) => m.email.toLowerCase().trim()));
+
+      for (const c of clients) {
+        if (!c.email) continue;
+        const email = c.email.toLowerCase().trim();
+        if (!memberEmails.has(email)) continue;
+
+        // Check client data for membership indicators
+        const clientStr = JSON.stringify(c).toLowerCase();
+        if (clientStr.includes("gold")) {
+          activeSubscriptions.set(email, "gold");
+          continue;
+        }
+        if (clientStr.includes("silver")) {
+          activeSubscriptions.set(email, "silver");
+          continue;
+        }
+
+        // Try per-client membership lookup on both endpoints
+        for (const url of [SIMPLYBOOK_ADMIN_URL, SIMPLYBOOK_PUBLIC_URL]) {
+          const mRes = await callApi(token, url, "getClientMembershipList", [String(c.id)]);
+          if (!mRes.error && mRes.result) {
+            const entries = Array.isArray(mRes.result) ? mRes.result : Object.values(mRes.result);
+            for (const m of entries) {
+              const mName = String((m as any).name || "").toLowerCase();
+              if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
+              else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
+            }
+            if (activeSubscriptions.has(email)) break;
+          }
+        }
+      }
+    } else {
+      // No client list available — try membership lookup for each member with simplybook_client_id
+      console.log("No client list. Checking members with simplybook_client_id...");
+      for (const member of dbMembers) {
+        if (!member.simplybook_client_id) continue;
+        for (const url of [SIMPLYBOOK_ADMIN_URL, SIMPLYBOOK_PUBLIC_URL]) {
+          const mRes = await callApi(token, url, "getClientMembershipList", [member.simplybook_client_id]);
+          if (!mRes.error && mRes.result) {
+            const entries = Array.isArray(mRes.result) ? mRes.result : Object.values(mRes.result);
+            for (const m of entries) {
+              const mName = String((m as any).name || "").toLowerCase();
+              const email = member.email.toLowerCase().trim();
+              if (mName.includes("gold")) activeSubscriptions.set(email, "gold");
+              else if (mName.includes("silver")) activeSubscriptions.set(email, "silver");
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    console.log(`Active subscriptions found: ${activeSubscriptions.size}`);
+
+    // Sync to database
     let updatedCount = 0;
     const updates = [];
 
