@@ -38,7 +38,7 @@ interface PaymentFormProps {
 const AUTHNET_CLIENT_KEY = '9pS45r8Q3UN5a5L4cG8sLn4V2w5ax93gAy3y6RSa8AhC58dEN4UJdx35bTg7m2rX';
 const AUTHNET_API_LOGIN_ID = '3Lf94JvBr4J';
 
-export function PaymentForm({ amount, onPaymentSuccess, onBack, loading }: PaymentFormProps) {
+export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentFormProps, 'onBack'>) {
   const [cardNumber, setCardNumber] = useState('');
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');

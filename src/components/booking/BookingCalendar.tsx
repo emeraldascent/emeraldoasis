@@ -18,7 +18,7 @@ interface BookingCalendarProps {
   onBack: () => void;
 }
 
-type Step = 'date' | 'time' | 'confirm' | 'success';
+type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
 
 // Campsite service IDs — these get check-in/check-out treatment, not hourly time slots
 const CAMPSITE_IDS = [8, 9, 10, 11, 12, 13, 14];
