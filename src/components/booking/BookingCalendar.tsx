@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { PaymentForm } from './PaymentForm';
 import type { Member } from '../../lib/types';
 
 interface ServiceInfo {
@@ -17,7 +18,7 @@ interface BookingCalendarProps {
   onBack: () => void;
 }
 
-type Step = 'date' | 'time' | 'confirm' | 'success';
+type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
 
 // Campsite service IDs — these get check-in/check-out treatment, not hourly time slots
 const CAMPSITE_IDS = [8, 9, 10, 11, 12, 13, 14];
@@ -133,11 +134,36 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
     setStep('confirm');
   };
 
-  const handleBook = async () => {
+  const handleProceedToPayment = () => {
+    setStep('payment');
+  };
+
+  const parsePrice = (p: string) => {
+    const match = p.replace(/[^0-9.]/g, '');
+    return parseFloat(match) || 0;
+  };
+
+  const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }) => {
     if (!selectedDate || !selectedTime) return;
     setLoading(true);
     setError('');
     try {
+      // 1. Charge via Authorize.net
+      const { data: payResult, error: payError } = await supabase.functions.invoke('authorize-payment', {
+        body: {
+          opaqueData,
+          amount: parsePrice(service.price),
+          description: `${service.name} — ${selectedDate}`,
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+        },
+      });
+      if (payError) throw payError;
+      if (!payResult?.success) throw new Error(payResult?.error || 'Payment declined');
+
+      const transactionId = payResult.transactionId;
+
+      // 2. Book in SimplyBook
       const result = await simplybookCall({
         action: 'book',
         eventId: service.id,
@@ -183,16 +209,27 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
           });
         } catch (logErr) {
           console.warn('Failed to log booking to backend:', logErr);
-          // Non-blocking — booking succeeded upstream
         }
-
-        setStep('success');
-      } else {
-        setError('Booking was not confirmed. Please try again or contact us.');
       }
+
+      // 3. Send confirmation email (non-blocking)
+      supabase.functions.invoke('send-booking-email', {
+        body: {
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+          serviceName: service.name,
+          date: selectedDate,
+          time: selectedTime,
+          price: service.price,
+          transactionId,
+          isCampsite,
+        },
+      }).catch((err) => console.warn('Email send failed:', err));
+
+      setStep('success');
     } catch (err) {
-      console.error('Booking failed:', err);
-      setError('Booking failed. Please try again or book directly at emeraldoasiscamp.simplybook.me');
+      console.error('Payment/booking failed:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -263,7 +300,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              if (step === 'confirm' && isCampsite) { setStep('date'); setSelectedDate(null); }
+              if (step === 'payment') setStep('confirm');
+              else if (step === 'confirm' && isCampsite) { setStep('date'); setSelectedDate(null); }
               else if (step === 'confirm') setStep('time');
               else if (step === 'time') { setStep('date'); setSelectedDate(null); }
               else onBack();
@@ -282,7 +320,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             <p className="text-[11px] text-gray-400">
               {step === 'date' && (isCampsite ? 'Select your check-in date' : 'Select a date')}
               {step === 'time' && selectedDate && `${formatDate(selectedDate)} · Pick a time`}
-              {step === 'confirm' && 'Confirm your booking'}
+              {step === 'confirm' && 'Review your booking'}
+              {step === 'payment' && 'Enter payment'}
             </p>
           </div>
           <span className="ml-auto text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
@@ -490,18 +529,23 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             </div>
 
             <Button
-              onClick={handleBook}
+              onClick={handleProceedToPayment}
               disabled={loading}
               className="w-full h-12 text-white font-medium rounded-xl text-sm"
               style={{ backgroundColor: 'var(--ea-emerald)' }}
             >
-              {loading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                `Confirm Booking · ${service.price}`
-              )}
+              Proceed to Payment · {service.price}
             </Button>
           </div>
+        )}
+
+        {/* PAYMENT STEP */}
+        {step === 'payment' && selectedDate && selectedTime && (
+          <PaymentForm
+            amount={service.price}
+            onPaymentSuccess={handlePaymentSuccess}
+            loading={loading}
+          />
         )}
       </div>
     </div>
