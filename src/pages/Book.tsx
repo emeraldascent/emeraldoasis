@@ -161,7 +161,6 @@ export function Book({ member, badgeStatus }: BookProps) {
 }
 
 // SimplyBook membership page
-const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
 
 function MembershipModal({
   open,
@@ -174,6 +173,74 @@ function MembershipModal({
 }) {
   const label = tier === 'silver' ? 'Silver' : 'Gold';
 
+  useEffect(() => {
+    if (!open) return;
+
+    let widgetInstance: any = null;
+
+    const initWidget = () => {
+      const container = document.getElementById('sb-membership-modal-container');
+      if (container) {
+        container.innerHTML = ''; // Clean up before re-init
+      }
+
+      // If SimplybookWidget exists globally, initialize it targeting our container
+      if ((window as any).SimplybookWidget) {
+        widgetInstance = new (window as any).SimplybookWidget({
+          widget_type: 'membership',
+          url: 'https://emeraldoasiscamp.simplybook.me',
+          theme: 'air',
+          theme_settings: {
+            timeline_hide_unavailable: '1',
+            hide_past_days: '0',
+            timeline_show_end_time: '0',
+            timeline_modern_display: 'as_slots',
+            sb_base_color: '#13694b',
+            display_item_mode: 'block',
+            booking_nav_bg_color: '#e8ece2',
+            body_bg_color: '#ffffff',
+            sb_review_image: '',
+            dark_font_color: '#101820',
+            light_font_color: '#ffffff',
+            btn_color_1: '#288c6f',
+            sb_company_label_color: '#ffffff',
+            hide_img_mode: '0',
+            show_sidebar: '1',
+            sb_busy: '#dad2ce',
+            sb_available: '#d3e0f1',
+          },
+          timeline: 'modern',
+          datepicker: 'top_calendar',
+          is_rtl: false,
+          app_config: {
+            clear_session: 0,
+            allow_switch_to_ada: 0,
+            predefined: [],
+          },
+          container_id: 'sb-membership-modal-container',
+        });
+      }
+    };
+
+    if (!(window as any).SimplybookWidget) {
+      const script = document.createElement('script');
+      script.src = 'https://widget.simplybook.me/v2/widget/widget.js';
+      script.async = true;
+      script.onload = initWidget;
+      document.head.appendChild(script);
+    } else {
+      initWidget();
+    }
+
+    return () => {
+      // Clean up widget DOM if unmounting
+      const container = document.getElementById('sb-membership-modal-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -184,9 +251,9 @@ function MembershipModal({
         onClick={() => onClose(false)}
       />
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-xl" style={{ height: '85vh', maxHeight: '700px' }}>
+      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-xl flex flex-col" style={{ height: '85vh', maxHeight: '700px' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-none">
           <h3
             className="text-sm font-semibold"
             style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}
@@ -200,16 +267,15 @@ function MembershipModal({
             ✕
           </button>
         </div>
-        {/* SimplyBook iframe */}
-        <iframe
-          src={SIMPLYBOOK_MEMBERSHIP_URL}
-          className="w-full border-0 bg-white"
-          style={{ height: 'calc(100% - 96px)' }}
-          allow="payment"
-          title={`${label} Oasis Pass`}
+        
+        {/* SimplyBook official widget container */}
+        <div 
+          id="sb-membership-modal-container" 
+          className="w-full flex-grow overflow-y-auto bg-white"
         />
+
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex-none">
           <button
             onClick={() => onClose(true)}
             className="w-full py-2.5 rounded-lg text-sm font-medium text-white"
