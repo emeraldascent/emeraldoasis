@@ -1,11 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, CalendarDays, TreePine, User, PenLine, Shield } from 'lucide-react';
 
-const ADMIN_EMAILS = ['emeraldoasiscamp@gmail.com', 'connor@emeraldascent.com'];
-
 interface BottomNavProps {
   isAuthenticated: boolean;
-  userEmail?: string | null;
+  isAdmin?: boolean;
 }
 
 const authNav = [
@@ -30,11 +28,10 @@ const publicNav = [
   { path: '/guide', label: 'Guide', icon: TreePine },
 ];
 
-export function BottomNav({ isAuthenticated, userEmail }: BottomNavProps) {
+export function BottomNav({ isAuthenticated, isAdmin }: BottomNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isAdmin = isAuthenticated && ADMIN_EMAILS.includes(userEmail || '');
   const items = isAdmin ? adminNav : isAuthenticated ? authNav : publicNav;
 
   return (
