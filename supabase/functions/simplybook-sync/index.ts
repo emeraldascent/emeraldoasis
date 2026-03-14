@@ -14,13 +14,13 @@ function getApiUserKey(): string {
   return key;
 }
 
-async function callAdminApi(token: string, method: string, params: unknown[]) {
+async function callAdminApi(apiKey: string, method: string, params: unknown[]) {
   const res = await fetch(SIMPLYBOOK_ADMIN_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Company-Login": SIMPLYBOOK_COMPANY,
-      "X-Token": token,
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
