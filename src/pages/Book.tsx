@@ -160,144 +160,8 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership page
-
-function MembershipModal({
-  open,
-  onClose,
-  tier,
-  member,
-}: {
-  open: boolean;
-  onClose: (purchased: boolean) => void;
-  tier: 'silver' | 'gold';
-  member: Member | null;
-}) {
-  const label = tier === 'silver' ? 'Silver' : 'Gold';
-
-  useEffect(() => {
-    if (!open) return;
-
-
-    const initWidget = () => {
-      const container = document.getElementById('sb-membership-modal-container');
-      if (container) {
-        container.innerHTML = ''; // Clean up before re-init
-      }
-
-      // Pre-fill client details if member exists
-      const predefinedClient = member ? {
-        client: {
-          name: `${member.first_name || ''} ${member.last_name || ''}`.trim() || undefined,
-          email: member.email || undefined,
-          phone: member.phone || undefined,
-        }
-      } : {};
-
-      // If SimplybookWidget exists globally, initialize it targeting our container
-      if ((window as any).SimplybookWidget) {
-        new (window as any).SimplybookWidget({
-          widget_type: 'membership',
-          url: 'https://emeraldoasiscamp.simplybook.me',
-          theme: 'air',
-          theme_settings: {
-            timeline_hide_unavailable: '1',
-            hide_past_days: '0',
-            timeline_show_end_time: '0',
-            timeline_modern_display: 'as_slots',
-            sb_base_color: '#13694b',
-            display_item_mode: 'block',
-            booking_nav_bg_color: '#e8ece2',
-            body_bg_color: '#ffffff',
-            sb_review_image: '',
-            dark_font_color: '#101820',
-            light_font_color: '#ffffff',
-            btn_color_1: '#288c6f',
-            sb_company_label_color: '#ffffff',
-            hide_img_mode: '0',
-            show_sidebar: '1',
-            sb_busy: '#dad2ce',
-            sb_available: '#d3e0f1',
-          },
-          timeline: 'modern',
-          datepicker: 'top_calendar',
-          is_rtl: false,
-          app_config: {
-            clear_session: 0,
-            allow_switch_to_ada: 0,
-            predefined: predefinedClient,
-          },
-          container_id: 'sb-membership-modal-container',
-        });
-      }
-    };
-
-    if (!(window as any).SimplybookWidget) {
-      const script = document.createElement('script');
-      script.src = 'https://widget.simplybook.me/v2/widget/widget.js';
-      script.async = true;
-      script.onload = initWidget;
-      document.head.appendChild(script);
-    } else {
-      initWidget();
-    }
-
-    return () => {
-      // Clean up widget DOM if unmounting
-      const container = document.getElementById('sb-membership-modal-container');
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => onClose(false)}
-      />
-      {/* Modal */}
-      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-xl flex flex-col" style={{ height: '85vh', maxHeight: '700px' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-none">
-          <h3
-            className="text-sm font-semibold"
-            style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}
-          >
-            Subscribe to {label} Pass
-          </h3>
-          <button
-            onClick={() => onClose(false)}
-            className="text-gray-400 hover:text-gray-600 text-lg font-medium px-2"
-          >
-            ✕
-          </button>
-        </div>
-        
-        {/* SimplyBook official widget container */}
-        <div 
-          id="sb-membership-modal-container" 
-          className="w-full flex-grow overflow-y-auto bg-white"
-        />
-
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex-none">
-          <button
-            onClick={() => onClose(true)}
-            className="w-full py-2.5 rounded-lg text-sm font-medium text-white"
-            style={{ backgroundColor: 'var(--ea-emerald)' }}
-          >
-            I've completed my subscription →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Direct link to SimplyBook membership page (avoids iframe payment timeout issues)
+const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
 
 const PASS_LIMITS = { silver: 5, gold: 10 } as const;
 
@@ -310,8 +174,6 @@ function MemberPassSection({
   member: Member;
   onSelect: (s: ServiceCard) => void;
 }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<'silver' | 'gold'>('silver');
   const [passesUsed, setPassesUsed] = useState(0);
   const [loadingUsage, setLoadingUsage] = useState(true);
 
@@ -340,91 +202,71 @@ function MemberPassSection({
     fetchUsage();
   }, [member.id, hasSubscription]);
 
-  const handleModalClose = async (purchased: boolean) => {
-    setModalOpen(false);
-    if (purchased) {
-      // Immediately sync this member's subscription status from SimplyBook
-      try {
-        await supabase.functions.invoke('simplybook-sync', {
-          body: { action: 'check_member', email: member.email },
-        });
-      } catch (e) {
-        console.error('Membership sync error:', e);
-      }
-      // Reload to pick up the updated subscription status
-      window.location.reload();
-    }
+  const openSubscribePage = () => {
+    window.open(SIMPLYBOOK_MEMBERSHIP_URL, '_blank', 'noopener');
   };
 
   if (!hasSubscription) {
     return (
-      <>
-        <MembershipModal
-          open={modalOpen}
-          onClose={handleModalClose}
-          tier={selectedTier}
-          member={member}
-        />
-        <div>
-          <h2
-            className="text-sm font-semibold mb-3 flex items-center gap-2"
-            style={{ color: 'var(--ea-midnight)' }}
+      <div>
+        <h2
+          className="text-sm font-semibold mb-3 flex items-center gap-2"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+          Member Passes
+        </h2>
+        <div className="space-y-2">
+          {/* Silver */}
+          <button
+            onClick={openSubscribePage}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
           >
-            <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-            Member Passes
-          </h2>
-          <div className="space-y-2">
-            {/* Silver */}
-            <button
-              onClick={() => { setSelectedTier('silver'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Silver Pass
-                </p>
-                <p className="text-[11px] text-gray-400">5 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $25/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-            {/* Gold */}
-            <button
-              onClick={() => { setSelectedTier('gold'); setModalOpen(true); }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Silver Pass
+              </p>
+              <p className="text-[11px] text-gray-400">5 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $25/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
+          {/* Gold */}
+          <button
+            onClick={openSubscribePage}
+            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
-              >
-                <Star size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  Gold Pass
-                </p>
-                <p className="text-[11px] text-gray-400">10 included day passes per month</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
-                  $50/mo
-                </p>
-                <p className="text-[10px] text-gray-400">Subscribe →</p>
-              </div>
-            </button>
-          </div>
+              <Star size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                Gold Pass
+              </p>
+              <p className="text-[11px] text-gray-400">10 included day passes per month</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                $50/mo
+              </p>
+              <p className="text-[10px] text-gray-400">Subscribe →</p>
+            </div>
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 
