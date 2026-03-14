@@ -16,14 +16,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { opaqueData, amount, description, email, memberName } = await req.json();
-
-    if (!opaqueData?.dataDescriptor || !opaqueData?.dataValue) {
-      return new Response(
-        JSON.stringify({ error: "Missing payment token (opaqueData)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const body = await req.json();
+    const { action } = body;
 
     const apiLoginId = Deno.env.get("AUTHNET_API_LOGIN_ID");
     const transactionKey = Deno.env.get("AUTHNET_TRANSACTION_KEY");
@@ -36,7 +30,62 @@ serve(async (req: Request) => {
       );
     }
 
-    // Build createTransactionRequest XML
+    // ── VOID a transaction ──
+    if (action === "void") {
+      const { transactionId } = body;
+      if (!transactionId) {
+        return new Response(
+          JSON.stringify({ error: "Missing transactionId for void" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const voidXml = `<?xml version="1.0" encoding="utf-8"?>
+<createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
+  <merchantAuthentication>
+    <name>${escapeXml(apiLoginId)}</name>
+    <transactionKey>${escapeXml(transactionKey)}</transactionKey>
+  </merchantAuthentication>
+  <transactionRequest>
+    <transactionType>voidTransaction</transactionType>
+    <refTransId>${escapeXml(transactionId)}</refTransId>
+  </transactionRequest>
+</createTransactionRequest>`;
+
+      const res = await fetch(AUTHNET_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/xml" },
+        body: voidXml,
+      });
+      const text = await res.text();
+      const clean = text.replace(/^\uFEFF/, "");
+      const resultCode = extractXml(clean, "resultCode");
+      const messageText = extractXml(clean, "text") || extractXml(clean, "description");
+
+      if (resultCode === "Ok") {
+        return new Response(
+          JSON.stringify({ success: true, message: "Transaction voided" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        console.error("Void failed:", clean);
+        return new Response(
+          JSON.stringify({ success: false, error: messageText || "Void failed" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ── CHARGE (default action) ──
+    const { opaqueData, amount, description, email, memberName } = body;
+
+    if (!opaqueData?.dataDescriptor || !opaqueData?.dataValue) {
+      return new Response(
+        JSON.stringify({ error: "Missing payment token (opaqueData)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
 <createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
   <merchantAuthentication>
@@ -72,10 +121,8 @@ serve(async (req: Request) => {
     });
 
     const text = await res.text();
-    // Remove BOM if present
     const clean = text.replace(/^\uFEFF/, "");
 
-    // Parse key fields from XML response
     const resultCode = extractXml(clean, "resultCode");
     const messageCode = extractXml(clean, "code");
     const messageText = extractXml(clean, "text") || extractXml(clean, "description");

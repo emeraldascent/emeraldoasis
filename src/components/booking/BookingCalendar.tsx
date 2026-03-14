@@ -22,6 +22,7 @@ type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
 
 // Campsite service IDs — these get check-in/check-out treatment, not hourly time slots
 const CAMPSITE_IDS = [8, 9, 10, 11, 12, 13, 14];
+const MEMBER_PASS_IDS = [20, 21];
 const CAMPSITE_CHECKIN = '12:00 – 6:00 PM';
 const CAMPSITE_CHECKOUT = '11:00 AM';
 
@@ -121,7 +122,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
     `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const isCampsite = CAMPSITE_IDS.includes(service.id);
-
+  const isMemberPass = MEMBER_PASS_IDS.includes(service.id);
   const handleDateSelect = (day: number) => {
     const key = getDayKey(day);
     if (key < todayStr) return;
@@ -144,7 +145,80 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   };
 
   const handleProceedToPayment = () => {
-    setStep('payment');
+    if (isMemberPass) {
+      handleFreeBooking();
+    } else {
+      setStep('payment');
+    }
+  };
+
+  const handleFreeBooking = async () => {
+    if (!selectedDate || !selectedTime) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await simplybookCall({
+        action: 'book',
+        eventId: service.id,
+        unitId: null,
+        date: selectedDate,
+        time: selectedTime,
+        clientData: {
+          name: `${member.first_name} ${member.last_name}`,
+          email: member.email,
+          phone: member.phone || '',
+        },
+        additionalFields: [
+          { id: 2, value: guestNames },
+          { id: 3, value: true },
+        ],
+      });
+
+      const bookingFromList = Array.isArray(result?.bookings) ? result.bookings[0] : null;
+      const sbBookingId = String(
+        result?.id ?? result?.bookingId ?? result?.booking_id ?? bookingFromList?.id ?? ''
+      );
+
+      if (sbBookingId) {
+        setBookingId(sbBookingId);
+        try {
+          await supabase.from('member_bookings').insert({
+            member_id: member.id,
+            simplybook_booking_id: sbBookingId,
+            service_id: String(service.id),
+            service_name: service.name,
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            guest_names: guestNames ? [guestNames] : null,
+            is_member_pass: true,
+            status: 'confirmed',
+          });
+        } catch (logErr) {
+          console.warn('Failed to log booking:', logErr);
+        }
+      }
+
+      // Send confirmation email (non-blocking)
+      supabase.functions.invoke('send-booking-email', {
+        body: {
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+          serviceName: service.name,
+          date: selectedDate,
+          time: selectedTime,
+          price: 'Included with membership',
+          transactionId: 'MEMBER-PASS',
+          isCampsite,
+        },
+      }).catch((err) => console.warn('Email send failed:', err));
+
+      setStep('success');
+    } catch (err) {
+      console.error('Free booking failed:', err);
+      setError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const parsePrice = (p: string) => {
@@ -172,23 +246,37 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
 
       const transactionId = payResult.transactionId;
 
-      // 2. Book in SimplyBook
-      const result = await simplybookCall({
-        action: 'book',
-        eventId: service.id,
-        unitId: null,
-        date: selectedDate,
-        time: selectedTime,
-        clientData: {
-          name: `${member.first_name} ${member.last_name}`,
-          email: member.email,
-          phone: member.phone || '',
-        },
-        additionalFields: [
-          { id: 2, value: guestNames },
-          { id: 3, value: true },
-        ],
-      });
+      // 2. Book in SimplyBook (retries built into simplybookCall)
+      let result;
+      try {
+        result = await simplybookCall({
+          action: 'book',
+          eventId: service.id,
+          unitId: null,
+          date: selectedDate,
+          time: selectedTime,
+          clientData: {
+            name: `${member.first_name} ${member.last_name}`,
+            email: member.email,
+            phone: member.phone || '',
+          },
+          additionalFields: [
+            { id: 2, value: guestNames },
+            { id: 3, value: true },
+          ],
+        });
+      } catch (bookErr) {
+        // SimplyBook failed after all retries — void the charge
+        console.error('SimplyBook booking failed, voiding payment:', bookErr);
+        try {
+          await supabase.functions.invoke('authorize-payment', {
+            body: { action: 'void', transactionId },
+          });
+        } catch (voidErr) {
+          console.error('Void also failed:', voidErr);
+        }
+        throw new Error('Booking failed — your card has NOT been charged. Please try again.');
+      }
 
       const bookingFromList = Array.isArray(result?.bookings) ? result.bookings[0] : null;
       const sbBookingId = String(
@@ -203,7 +291,6 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         setBookingId(sbBookingId);
 
         // Log booking to backend for pass tracking
-        const isMemberPass = [20, 21].includes(service.id);
         try {
           await supabase.from('member_bookings').insert({
             member_id: member.id,
@@ -543,7 +630,13 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
               className="w-full h-12 text-white font-medium rounded-xl text-sm"
               style={{ backgroundColor: 'var(--ea-emerald)' }}
             >
-              Proceed to Payment · {service.price}
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : isMemberPass ? (
+                'Confirm Booking · Included'
+              ) : (
+                `Proceed to Payment · ${service.price}`
+              )}
             </Button>
           </div>
         )}

@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useMember } from './hooks/useMember';
+import { useAdmin } from './hooks/useAdmin';
 import { AuthGuard } from './components/auth/AuthGuard';
+import { AdminGuard } from './components/auth/AdminGuard';
 import { BottomNav } from './components/layout/BottomNav';
 import { Welcome } from './pages/Welcome';
 import { Join } from './pages/Join';
@@ -15,6 +17,7 @@ import { ResetPassword } from './pages/ResetPassword';
 
 function AppContent() {
   const { user, member, badgeStatus, loading, logout, refreshMember } = useMember();
+  const { isAdmin, loading: adminLoading } = useAdmin(user);
   const isAuthenticated = !!user;
 
   return (
@@ -31,7 +34,7 @@ function AppContent() {
           element={
             <>
               <Guide />
-              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </>
           }
         />
@@ -40,7 +43,7 @@ function AppContent() {
           element={
             <>
               <Map />
-              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </>
           }
         />
@@ -59,7 +62,7 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Dashboard member={member} badgeStatus={badgeStatus} />
-              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }
         />
@@ -68,7 +71,7 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Book member={member} badgeStatus={badgeStatus} />
-              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }
         />
@@ -77,15 +80,22 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Profile member={member} onLogout={logout} onRefresh={refreshMember} />
-              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }
         />
 
-        {/* Admin — PIN protected, no AuthGuard required */}
+        {/* Admin — role-based access via user_roles table */}
         <Route
           path="/admin"
-          element={<Admin userEmail={user?.email} />}
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <AdminGuard isAdmin={isAdmin} loading={adminLoading}>
+                <Admin />
+                <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
+              </AdminGuard>
+            </AuthGuard>
+          }
         />
       </Routes>
     </>
