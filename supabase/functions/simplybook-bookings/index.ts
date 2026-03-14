@@ -112,24 +112,50 @@ serve(async (req) => {
     if (action === "book") {
       const adminToken = await getAdminToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
-      // Use admin token on public endpoint — same method signature, elevated privileges
-      const res = await fetch(SIMPLYBOOK_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Company-Login": SIMPLYBOOK_COMPANY,
-          "X-Token": adminToken,
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "book",
-          params: [eventId, unitId, date, time, clientData, additionalFields || [], count || 1],
-          id: 2,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      return new Response(JSON.stringify(data.result), {
+
+      // Step 1: Find or create the client in SimplyBook
+      let clientId: string | number | null = null;
+
+      // Try to find existing client by email
+      try {
+        const clients = await callAdminApi(adminToken, "getClientList", []);
+        const clientList: any[] = Array.isArray(clients) ? clients : Object.values(clients);
+        const match = clientList.find(
+          (c: any) => c.email && c.email.toLowerCase().trim() === clientData.email.toLowerCase().trim()
+        );
+        if (match) clientId = match.id;
+      } catch (e) {
+        console.log("Client lookup failed, will create new:", e);
+      }
+
+      // If not found, create the client
+      if (!clientId) {
+        try {
+          const nameParts = (clientData.name || "").split(" ");
+          const newClient = await callAdminApi(adminToken, "addClient", [{
+            name: nameParts[0] || clientData.name,
+            last_name: nameParts.slice(1).join(" ") || "",
+            email: clientData.email,
+            phone: clientData.phone || "",
+          }]);
+          clientId = newClient?.id || newClient;
+        } catch (e) {
+          console.error("Failed to create client:", e);
+        }
+      }
+
+      // Step 2: Book using admin API with client_id
+      const bookParams: any[] = [eventId, unitId, date, time];
+      if (clientId) {
+        // Admin book method: book(eventId, unitId, date, time, clientId, additionalFields, count)
+        bookParams.push(clientId, additionalFields || [], count || 1);
+      } else {
+        // Fallback: try with clientData
+        bookParams.push(clientData, additionalFields || [], count || 1);
+      }
+
+      const result = await callAdminApi(adminToken, "book", bookParams);
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
