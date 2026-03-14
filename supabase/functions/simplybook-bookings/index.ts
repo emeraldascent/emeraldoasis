@@ -114,27 +114,23 @@ serve(async (req) => {
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
 
       // Resolve unit ID — admin API requires it
-      let resolvedUnitId = unitId;
-      if (!resolvedUnitId) {
-        try {
-          const units = await callAdminApi(adminToken, "getUnitList", []);
-          const unitList: any[] = Array.isArray(units) ? units : Object.values(units);
-          console.log(`Available units: ${JSON.stringify(unitList.map((u: any) => ({ id: u.id, name: u.name })))}`);
-          // Try to find a unit that serves this event
-          const eventUnits = await callAdminApi(adminToken, "getUnitsByEvent", [eventId]);
-          const euList: any[] = Array.isArray(eventUnits) ? eventUnits : Object.values(eventUnits);
-          console.log(`Units for event ${eventId}: ${JSON.stringify(euList)}`);
-          if (euList.length > 0) {
-            resolvedUnitId = euList[0]?.id || euList[0];
-          } else if (unitList.length > 0) {
-            resolvedUnitId = unitList[0].id;
-          }
-        } catch (e) {
-          console.log("Unit lookup failed:", e);
-          // Try with unit 1 as fallback
-          resolvedUnitId = 1;
-        }
-      }
+      // Event-to-Unit mapping based on SimplyBook configuration:
+      const EVENT_UNIT_MAP: Record<number, number> = {
+        // Day passes → Day Pass Parking (unit 22)
+        18: 22, 19: 22, 22: 22, 23: 22,
+        // Member passes → Day Pass Parking (unit 22)
+        20: 22, 21: 22,
+        // Campsites
+        11: 4,   // Campsite 3
+        12: 5,   // Campsite 4
+        13: 6,   // Campsite 5
+        14: 7,   // Campsite 6
+        9: 23,   // Campsite 7 Social
+        8: 8,    // Campsite 7 Group
+        10: 3,   // Creekside Group #2
+      };
+
+      const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
       // Find or create client
       let clientId: string | number | null = null;
