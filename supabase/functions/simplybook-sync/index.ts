@@ -1,44 +1,44 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SIMPLYBOOK_COMPANY = "emeraldoasiscamp";
-const SIMPLYBOOK_ADMIN_API_KEY = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY") || "";
+const SIMPLYBOOK_API_KEY = Deno.env.get("SIMPLYBOOK_API_KEY") || "";
+const SIMPLYBOOK_LOGIN_URL = "https://user-api.simplybook.me/login";
+const SIMPLYBOOK_API_URL = "https://user-api.simplybook.me";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Authenticate with SimplyBook REST API v2 using custom API key
-async function getV2Token(): Promise<string> {
-  const res = await fetch("https://login.simplybook.me/token", {
+async function getToken(): Promise<string> {
+  const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      company: SIMPLYBOOK_COMPANY,
-      key: SIMPLYBOOK_ADMIN_API_KEY,
+      jsonrpc: "2.0",
+      method: "getToken",
+      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_API_KEY],
+      id: 1,
     }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Token request failed (${res.status}): ${text}`);
-  }
   const data = await res.json();
-  return data.token;
+  if (data.error) throw new Error(data.error.message);
+  return data.result;
 }
 
-async function v2Get(token: string, path: string) {
-  const res = await fetch(`https://user-api.simplybook.me/admin${path}`, {
+async function callApi(token: string, method: string, params: unknown[]) {
+  const res = await fetch(SIMPLYBOOK_API_URL, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Company-Login": SIMPLYBOOK_COMPANY,
       "X-Token": token,
     },
+    body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${path} failed (${res.status}): ${text}`);
-  }
-  return res.json();
+  const data = await res.json();
+  if (data.error) throw new Error(`${method}: ${data.error.message}`);
+  return data.result;
 }
 
 Deno.serve(async (req) => {
@@ -47,83 +47,78 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!SIMPLYBOOK_ADMIN_API_KEY) {
-      throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
+    if (!SIMPLYBOOK_API_KEY) {
+      throw new Error("Missing SIMPLYBOOK_API_KEY secret.");
     }
 
-    console.log("Authenticating with SimplyBook REST API v2...");
-    const token = await getV2Token();
-    console.log("Token obtained successfully.");
+    console.log("Authenticating with SimplyBook API...");
+    const token = await getToken();
+    console.log("Token obtained.");
 
-    // Fetch clients with memberships
-    console.log("Fetching clients...");
-    let clients: any[] = [];
-    let page = 1;
-    const perPage = 100;
-
-    while (true) {
-      const result = await v2Get(token, `/clients?page=${page}&on_page=${perPage}`);
-      const batch = Array.isArray(result) ? result : (result.data || []);
-      clients = clients.concat(batch);
-      console.log(`Page ${page}: ${batch.length} clients`);
-      if (batch.length < perPage) break;
-      page++;
-    }
-
-    console.log(`Total clients fetched: ${clients.length}`);
-
-    // Fetch active memberships
-    console.log("Fetching memberships...");
-    let memberships: any[] = [];
+    // Try to get membership/subscription info via available API methods
+    // First check what plugins are active
+    let plugins: string[] = [];
     try {
-      const mResult = await v2Get(token, "/memberships");
-      memberships = Array.isArray(mResult) ? mResult : (mResult.data || []);
+      const pluginList = await callApi(token, "isPluginActivated", ["membership"]);
+      console.log("Membership plugin active:", pluginList);
+      if (pluginList) plugins.push("membership");
     } catch (e) {
-      console.warn("Could not fetch /memberships endpoint, trying /client-memberships...");
+      console.log("Membership plugin check:", String(e));
+    }
+
+    // Try getMembershipList to see available membership types
+    let membershipTypes: any = null;
+    try {
+      membershipTypes = await callApi(token, "getMembershipList", []);
+      console.log("Membership types:", JSON.stringify(membershipTypes));
+    } catch (e) {
+      console.log("getMembershipList:", String(e));
+    }
+
+    // Try getClientMembershipList or similar
+    let clientMemberships: any = null;
+    const methodsToTry = [
+      "getClientMembershipList",
+      "getMembershipClientList", 
+      "getClientList",
+    ];
+
+    for (const method of methodsToTry) {
       try {
-        const mResult = await v2Get(token, "/client-memberships");
-        memberships = Array.isArray(mResult) ? mResult : (mResult.data || []);
-      } catch (e2) {
-        console.warn("Could not fetch client-memberships either:", String(e2));
+        clientMemberships = await callApi(token, method, []);
+        console.log(`${method} succeeded:`, JSON.stringify(clientMemberships).substring(0, 500));
+        break;
+      } catch (e) {
+        console.log(`${method} failed:`, String(e));
       }
     }
 
-    console.log(`Memberships found: ${memberships.length}`);
-
-    // Build email -> tier map from membership data
+    // Build email -> tier map
     const activeSubscriptions = new Map<string, string>();
 
-    // Try to match memberships to clients
-    for (const m of memberships) {
-      const mStr = JSON.stringify(m).toLowerCase();
-      let tier: string | null = null;
-      if (mStr.includes("gold")) tier = "gold";
-      else if (mStr.includes("silver")) tier = "silver";
+    if (clientMemberships) {
+      const entries = Array.isArray(clientMemberships) 
+        ? clientMemberships 
+        : Object.values(clientMemberships);
+      
+      for (const entry of entries) {
+        const e = entry as any;
+        if (!e.email && !e.client_email) continue;
+        const email = (e.email || e.client_email || "").toLowerCase().trim();
+        if (!email) continue;
 
-      if (tier && m.client_id) {
-        // Find client email by client_id
-        const client = clients.find((c: any) => String(c.id) === String(m.client_id));
-        if (client?.email) {
-          activeSubscriptions.set(client.email.toLowerCase().trim(), tier);
+        const entryStr = JSON.stringify(e).toLowerCase();
+        let tier: string | null = null;
+        if (entryStr.includes("gold")) tier = "gold";
+        else if (entryStr.includes("silver")) tier = "silver";
+
+        if (tier) {
+          activeSubscriptions.set(email, tier);
         }
       }
     }
 
-    // Also scan client objects for embedded membership info
-    for (const c of clients) {
-      if (!c.email) continue;
-      const email = c.email.toLowerCase().trim();
-      if (activeSubscriptions.has(email)) continue;
-
-      const clientStr = JSON.stringify(c).toLowerCase();
-      if (clientStr.includes("gold")) {
-        activeSubscriptions.set(email, "gold");
-      } else if (clientStr.includes("silver")) {
-        activeSubscriptions.set(email, "silver");
-      }
-    }
-
-    console.log(`Active subscriptions found: ${activeSubscriptions.size}`);
+    console.log(`Active subscriptions mapped: ${activeSubscriptions.size}`);
 
     // Sync to Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -167,10 +162,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "Sync complete",
-        clients_checked: clients.length,
-        memberships_found: memberships.length,
+        membership_types: membershipTypes,
         active_subscriptions: activeSubscriptions.size,
         records_updated: updatedCount,
+        methods_available: clientMemberships ? true : false,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
