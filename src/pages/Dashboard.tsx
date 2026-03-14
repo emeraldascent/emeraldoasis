@@ -66,16 +66,16 @@ export function Dashboard({ member, badgeStatus }: DashboardProps) {
               </p>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-xs text-gray-600">
-                  <Droplets size={14} style={{ color: 'var(--ea-sky)' }} />
-                  <span>💧 Spring water (15 min parking)</span>
+                  <Droplets size={14} style={{ color: 'var(--ea-emerald)' }} />
+                  <span>Spring water (15 min parking)</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <ShoppingBag size={14} style={{ color: 'var(--ea-emerald)' }} />
-                  <span>🌿 Emerald Market access</span>
+                  <span>Emerald Market access</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-600">
-                  <Smartphone size={14} style={{ color: 'var(--ea-lilac)' }} />
-                  <span>📱 Booking portal access</span>
+                  <Smartphone size={14} style={{ color: 'var(--ea-emerald)' }} />
+                  <span>Booking portal access</span>
                 </div>
               </div>
             </div>
