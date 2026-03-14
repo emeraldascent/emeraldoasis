@@ -22,6 +22,7 @@ type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
 
 // Campsite service IDs — these get check-in/check-out treatment, not hourly time slots
 const CAMPSITE_IDS = [8, 9, 10, 11, 12, 13, 14];
+const MEMBER_PASS_IDS = [20, 21];
 const CAMPSITE_CHECKIN = '12:00 – 6:00 PM';
 const CAMPSITE_CHECKOUT = '11:00 AM';
 
