@@ -160,7 +160,7 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership — opens in popup window, auto-syncs on close
+// SimplyBook membership — opens in new tab, auto-syncs when user returns
 
 function MembershipModal({
   open,
@@ -173,98 +173,98 @@ function MembershipModal({
   tier: 'silver' | 'gold';
   member: Member | null;
 }) {
+  const [syncing, setSyncing] = useState(false);
+
   useEffect(() => {
     if (!open) return;
 
-    let popupClosed = false;
+    // Open SimplyBook membership page directly
+    window.open('https://emeraldoasiscamp.simplybook.me/v2/#memberships', '_blank');
 
-    const initWidget = () => {
-      const predefinedClient = member ? {
-        client: {
-          name: `${member.first_name || ''} ${member.last_name || ''}`.trim() || undefined,
-          email: member.email || undefined,
-          phone: member.phone || undefined,
-        }
-      } : {};
+    let fired = false;
 
-      if ((window as any).SimplybookWidget) {
-        new (window as any).SimplybookWidget({
-          widget_type: 'button',
-          url: 'https://emeraldoasiscamp.simplybook.me',
-          theme: 'air',
-          theme_settings: {
-            timeline_hide_unavailable: '1',
-            hide_past_days: '0',
-            timeline_show_end_time: '0',
-            timeline_modern_display: 'as_slots',
-            sb_base_color: '#13694b',
-            display_item_mode: 'block',
-            booking_nav_bg_color: '#e8ece2',
-            body_bg_color: '#ffffff',
-            dark_font_color: '#101820',
-            light_font_color: '#ffffff',
-            btn_color_1: '#288c6f',
-            sb_company_label_color: '#ffffff',
-            hide_img_mode: '0',
-            show_sidebar: '1',
-            sb_busy: '#dad2ce',
-            sb_available: '#d3e0f1',
-          },
-          timeline: 'modern',
-          datepicker: 'top_calendar',
-          is_rtl: false,
-          app_config: {
-            clear_session: 0,
-            allow_switch_to_ada: 0,
-            predefined: predefinedClient,
-          },
-          button_custom_id: 'sb-membership-popup-trigger',
-          button_position: 'right',
-          button_only_on_start: true,
-        });
-
-        // Auto-click the widget button after a short delay
-        setTimeout(() => {
-          const btn = document.getElementById('sb-membership-popup-trigger');
-          if (btn) btn.click();
-        }, 500);
+    const handleFocus = () => {
+      if (!fired) {
+        fired = true;
+        setSyncing(true);
       }
     };
 
-    if (!(window as any).SimplybookWidget) {
-      const script = document.createElement('script');
-      script.src = 'https://widget.simplybook.me/v2/widget/widget.js';
-      script.async = true;
-      script.onload = initWidget;
-      document.head.appendChild(script);
-    } else {
-      initWidget();
-    }
-
-    // Listen for popup close / focus return — trigger sync
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && open && !popupClosed) {
-        popupClosed = true;
-        onClose(true);
-      }
-    };
-
-    // Small delay before listening so we don't fire immediately
-    const listenerId = setTimeout(() => {
-      document.addEventListener('visibilitychange', handleVisibility);
-    }, 2000);
+    // Delay listener so it doesn't fire instantly
+    const timerId = setTimeout(() => {
+      window.addEventListener('focus', handleFocus);
+    }, 1500);
 
     return () => {
-      clearTimeout(listenerId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      // Clean up any injected widget elements
-      const btn = document.getElementById('sb-membership-popup-trigger');
-      if (btn) btn.remove();
+      clearTimeout(timerId);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [open, member, onClose, tier]);
+  }, [open]);
 
-  // No visible modal — the popup opens externally
-  return null;
+  // When syncing starts, call the sync endpoint then close
+  useEffect(() => {
+    if (!syncing || !member) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await supabase.functions.invoke('simplybook-sync', {
+          body: { action: 'check_member', email: member.email },
+        });
+      } catch (e) {
+        console.error('Membership sync error:', e);
+      }
+      if (!cancelled) {
+        setSyncing(false);
+        onClose(true);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [syncing, member, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 text-center space-y-4 shadow-xl">
+        {syncing ? (
+          <>
+            <div className="w-10 h-10 border-2 border-gray-200 border-t-emerald-500 rounded-full animate-spin mx-auto" />
+            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+              Checking your subscription…
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+              <Star size={24} style={{ color: 'var(--ea-emerald)' }} />
+            </div>
+            <h3 className="text-base font-semibold" style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}>
+              Complete Your Subscription
+            </h3>
+            <p className="text-xs text-gray-500">
+              A new tab opened with SimplyBook. Complete your {tier === 'gold' ? 'Gold' : 'Silver'} subscription there, then come back here.
+            </p>
+            <button
+              onClick={() => window.open('https://emeraldoasiscamp.simplybook.me/v2/#memberships', '_blank')}
+              className="text-xs font-medium underline"
+              style={{ color: 'var(--ea-emerald)' }}
+            >
+              Reopen subscription page
+            </button>
+            <button
+              onClick={() => onClose(false)}
+              className="block mx-auto text-xs text-gray-400 hover:text-gray-600 mt-2"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const PASS_LIMITS = { silver: 5, gold: 10 } as const;
