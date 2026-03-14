@@ -61,11 +61,28 @@ Deno.serve(async (req) => {
     console.log("getEventList OK:", JSON.stringify(events).slice(0, 200));
 
     // Get client list
-    console.log("Fetching client list...");
-    const clientsRaw = await callAdminApi(token, "getClientList", [{ page: 1, on_page: 200 }]);
-    const clientMap = clientsRaw?.data || clientsRaw || {};
-    const clients: any[] = Array.isArray(clientMap) ? clientMap : Object.values(clientMap);
-    console.log(`Found ${clients.length} clients.`);
+    // Try different param formats for getClientList
+    let clients: any[] = [];
+    for (const params of [
+      [{ page: 1, on_page: 200 }],
+      [null, "client", null],
+      [],
+    ]) {
+      try {
+        const clientsRaw = await callAdminApi(token, "getClientList", params);
+        console.log("getClientList raw response type:", typeof clientsRaw, "params:", JSON.stringify(params));
+        console.log("getClientList preview:", JSON.stringify(clientsRaw).slice(0, 500));
+        const clientMap = clientsRaw?.data || clientsRaw || {};
+        clients = Array.isArray(clientMap) ? clientMap : Object.values(clientMap);
+        if (clients.length > 0) {
+          console.log(`Found ${clients.length} clients with params ${JSON.stringify(params)}`);
+          break;
+        }
+      } catch (e) {
+        console.log(`getClientList with params ${JSON.stringify(params)} failed: ${e}`);
+      }
+    }
+    console.log(`Total clients found: ${clients.length}`);
 
     const activeSubscriptions = new Map<string, string>();
 
