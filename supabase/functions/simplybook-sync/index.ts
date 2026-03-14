@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
       // Try per-client membership lookup
       try {
-        const memberships = await callAdminApi(token, "getClientMembershipList", [String(c.id)]);
+        const memberships = await callAdminApi(apiKey, "getClientMembershipList", [String(c.id)]);
         if (memberships) {
           const entries = Array.isArray(memberships) ? memberships : Object.values(memberships);
           for (const m of entries) {
