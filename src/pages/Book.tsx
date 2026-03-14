@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, Sun, Tent, Users, Clock, Star, ExternalLink } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
 import { BookingCalendar } from '../components/booking/BookingCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member, BadgeStatus } from '../lib/types';
@@ -160,7 +160,69 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
+const SIMPLYBOOK_SILVER_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership/2';
+const SIMPLYBOOK_GOLD_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership/11';
+
+function MembershipModal({
+  open,
+  onClose,
+  tier,
+}: {
+  open: boolean;
+  onClose: (purchased: boolean) => void;
+  tier: 'silver' | 'gold';
+}) {
+  const url = tier === 'silver' ? SIMPLYBOOK_SILVER_URL : SIMPLYBOOK_GOLD_URL;
+  const label = tier === 'silver' ? 'Silver' : 'Gold';
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => onClose(false)}
+      />
+      {/* Modal */}
+      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-xl" style={{ height: '85vh', maxHeight: '700px' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <h3
+            className="text-sm font-semibold"
+            style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}
+          >
+            Subscribe to {label} Pass
+          </h3>
+          <button
+            onClick={() => onClose(false)}
+            className="text-gray-400 hover:text-gray-600 text-lg font-medium px-2"
+          >
+            ✕
+          </button>
+        </div>
+        {/* SimplyBook iframe */}
+        <iframe
+          src={url}
+          className="w-full border-0"
+          style={{ height: 'calc(100% - 96px)' }}
+          allow="payment"
+          title={`${label} Membership`}
+        />
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+          <button
+            onClick={() => onClose(true)}
+            className="w-full py-2.5 rounded-lg text-sm font-medium text-white"
+            style={{ backgroundColor: 'var(--ea-emerald)' }}
+          >
+            I've completed my subscription →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MemberPassSection({
   services,
@@ -173,9 +235,13 @@ function MemberPassSection({
 }) {
   const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<'silver' | 'gold'>('silver');
+  const [checkCount, setCheckCount] = useState(0);
 
   useEffect(() => {
     async function checkMembership() {
+      setChecking(true);
       try {
         const { data, error } = await supabase.functions.invoke('simplybook-bookings', {
           body: { action: 'check_membership', email: memberEmail },
@@ -192,7 +258,15 @@ function MemberPassSection({
       }
     }
     checkMembership();
-  }, [memberEmail]);
+  }, [memberEmail, checkCount]);
+
+  const handleModalClose = (purchased: boolean) => {
+    setModalOpen(false);
+    if (purchased) {
+      // Re-check membership status after they say they purchased
+      setCheckCount((c) => c + 1);
+    }
+  };
 
   if (checking) {
     return (
@@ -213,35 +287,72 @@ function MemberPassSection({
 
   if (!hasSubscription) {
     return (
-      <div>
-        <h2
-          className="text-sm font-semibold mb-3 flex items-center gap-2"
-          style={{ color: 'var(--ea-midnight)' }}
-        >
-          <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-          Member Passes
-        </h2>
-        <div className="p-4 rounded-xl bg-white border border-gray-100 space-y-3">
-          <div className="text-center">
-            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
-              Silver & Gold Pass Access
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Get included day passes with a Silver ($25/mo · 5 passes) or Gold ($50/mo · 10 passes) subscription
-            </p>
-          </div>
-          <a
-            href={SIMPLYBOOK_MEMBERSHIP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
-            style={{ backgroundColor: 'var(--ea-spirulina)' }}
+      <>
+        <MembershipModal
+          open={modalOpen}
+          onClose={handleModalClose}
+          tier={selectedTier}
+        />
+        <div>
+          <h2
+            className="text-sm font-semibold mb-3 flex items-center gap-2"
+            style={{ color: 'var(--ea-midnight)' }}
           >
-            Upgrade to Silver or Gold
-            <ExternalLink size={14} />
-          </a>
+            <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
+            Member Passes
+          </h2>
+          <div className="space-y-2">
+            {/* Silver */}
+            <button
+              onClick={() => { setSelectedTier('silver'); setModalOpen(true); }}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: '#F0F0F0', color: '#9CA3AF' }}
+              >
+                <Star size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                  Silver Pass
+                </p>
+                <p className="text-[11px] text-gray-400">5 included day passes per month</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                  $25/mo
+                </p>
+                <p className="text-[10px] text-gray-400">Subscribe →</p>
+              </div>
+            </button>
+            {/* Gold */}
+            <button
+              onClick={() => { setSelectedTier('gold'); setModalOpen(true); }}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: '#FEF9C3', color: '#CA8A04' }}
+              >
+                <Star size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                  Gold Pass
+                </p>
+                <p className="text-[11px] text-gray-400">10 included day passes per month</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--ea-spirulina)' }}>
+                  $50/mo
+                </p>
+                <p className="text-[10px] text-gray-400">Subscribe →</p>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
