@@ -160,10 +160,7 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership page — #membership shows both plans
-// Individual buy links use #membership/buy/{id}/{startDate} but the
-// listing page lets them choose and handles payment flow
-const SIMPLYBOOK_MEMBERSHIP_URL = 'https://emeraldoasiscamp.simplybook.me/v2/#membership';
+// SimplyBook membership page — base URL loaded in iframe, then navigated to #membership on load
 
 function MembershipModal({
   open,
@@ -175,7 +172,6 @@ function MembershipModal({
   tier: 'silver' | 'gold';
 }) {
   const label = tier === 'silver' ? 'Silver' : 'Gold';
-  const iframeRef = useState<HTMLIFrameElement | null>(null);
 
   if (!open) return null;
 
