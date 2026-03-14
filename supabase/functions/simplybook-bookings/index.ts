@@ -22,6 +22,7 @@ async function getToken(): Promise<string> {
     }),
   });
   const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
   return data.result;
 }
 
@@ -47,22 +48,17 @@ serve(async (req) => {
 
   try {
     const token = await getToken();
-    const { action, dateFrom, dateTo } = await req.json();
+    const body = await req.json();
+    const { action } = body;
 
-    if (action === "services") {
-      const events = await callApi(token, "getEventList", []);
-      return new Response(JSON.stringify(events), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "availability") {
-      // Get start time matrix for date range
+    // Get available time slots for a service on a date range
+    if (action === "time_slots") {
+      const { dateFrom, dateTo, eventId, unitId } = body;
       const matrix = await callApi(token, "getStartTimeMatrix", [
         dateFrom,
         dateTo,
-        null, // all services
-        null, // all providers
+        eventId,
+        unitId || null,
         1,
       ]);
       return new Response(JSON.stringify(matrix), {
@@ -70,10 +66,37 @@ serve(async (req) => {
       });
     }
 
+    // Get work calendar for a month
     if (action === "work_calendar") {
-      const [year, month] = dateFrom.split("-").map(Number);
+      const { year, month } = body;
       const cal = await callApi(token, "getWorkCalendar", [year, month, null]);
       return new Response(JSON.stringify(cal), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Create a booking
+    if (action === "book") {
+      const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
+      const result = await callApi(token, "book", [
+        eventId,
+        unitId,
+        date,
+        time,
+        clientData,  // { name, email, phone }
+        additionalFields || [],
+        count || 1,
+      ]);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Confirm a booking (some setups require confirmation after book)
+    if (action === "confirm") {
+      const { bookingId } = body;
+      const result = await callApi(token, "confirmBooking", [bookingId]);
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

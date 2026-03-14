@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, ArrowLeft, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { BookingCalendar } from '../components/booking/BookingCalendar';
 import type { Member, BadgeStatus } from '../lib/types';
-
-const SIMPLYBOOK_BASE = 'https://emeraldoasiscamp.simplybook.me/v2/#book/service';
 
 interface ServiceCard {
   id: number;
@@ -102,40 +101,14 @@ export function Book({ member, badgeStatus }: BookProps) {
     );
   }
 
-  // SimplyBook iframe view for selected service
-  if (selectedService) {
+  // Native booking calendar for selected service
+  if (selectedService && member) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
-        <div className="bg-white px-4 py-3 border-b border-gray-100">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <button
-              onClick={() => setSelectedService(null)}
-              className="p-1 -ml-1 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <ArrowLeft size={20} style={{ color: 'var(--ea-midnight)' }} />
-            </button>
-            <div className="flex-1">
-              <h1
-                className="text-base"
-                style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  color: 'var(--ea-midnight)',
-                }}
-              >
-                {selectedService.name}
-              </h1>
-              <p className="text-[11px] text-gray-400">{selectedService.price}</p>
-            </div>
-          </div>
-        </div>
-        <iframe
-          src={`${SIMPLYBOOK_BASE}/${selectedService.id}`}
-          title={`Book ${selectedService.name}`}
-          className="flex-1 w-full border-0"
-          style={{ minHeight: 'calc(100vh - 120px)' }}
-          allow="payment"
-        />
-      </div>
+      <BookingCalendar
+        service={selectedService}
+        member={member}
+        onBack={() => setSelectedService(null)}
+      />
     );
   }
 
