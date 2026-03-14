@@ -145,7 +145,80 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   };
 
   const handleProceedToPayment = () => {
-    setStep('payment');
+    if (isMemberPass) {
+      handleFreeBooking();
+    } else {
+      setStep('payment');
+    }
+  };
+
+  const handleFreeBooking = async () => {
+    if (!selectedDate || !selectedTime) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await simplybookCall({
+        action: 'book',
+        eventId: service.id,
+        unitId: null,
+        date: selectedDate,
+        time: selectedTime,
+        clientData: {
+          name: `${member.first_name} ${member.last_name}`,
+          email: member.email,
+          phone: member.phone || '',
+        },
+        additionalFields: [
+          { id: 2, value: guestNames },
+          { id: 3, value: true },
+        ],
+      });
+
+      const bookingFromList = Array.isArray(result?.bookings) ? result.bookings[0] : null;
+      const sbBookingId = String(
+        result?.id ?? result?.bookingId ?? result?.booking_id ?? bookingFromList?.id ?? ''
+      );
+
+      if (sbBookingId) {
+        setBookingId(sbBookingId);
+        try {
+          await supabase.from('member_bookings').insert({
+            member_id: member.id,
+            simplybook_booking_id: sbBookingId,
+            service_id: String(service.id),
+            service_name: service.name,
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            guest_names: guestNames ? [guestNames] : null,
+            is_member_pass: true,
+            status: 'confirmed',
+          });
+        } catch (logErr) {
+          console.warn('Failed to log booking:', logErr);
+        }
+      }
+
+      // Send confirmation email (non-blocking)
+      supabase.functions.invoke('send-booking-email', {
+        body: {
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+          serviceName: service.name,
+          date: selectedDate,
+          time: selectedTime,
+          price: 'Included with membership',
+          transactionId: 'MEMBER-PASS',
+          isCampsite,
+        },
+      }).catch((err) => console.warn('Email send failed:', err));
+
+      setStep('success');
+    } catch (err) {
+      console.error('Free booking failed:', err);
+      setError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const parsePrice = (p: string) => {
