@@ -84,74 +84,54 @@ serve(async (req) => {
   }
 
   try {
-    const token = await getToken();
     const body = await req.json();
     const { action } = body;
 
-    // Get available time slots for a service on a date range
+    // Read-only actions use public token
     if (action === "time_slots") {
+      const token = await getPublicToken();
       const { dateFrom, dateTo, eventId, unitId } = body;
-      const matrix = await callApi(token, "getStartTimeMatrix", [
-        dateFrom,
-        dateTo,
-        eventId,
-        unitId || null,
-        1,
+      const matrix = await callPublicApi(token, "getStartTimeMatrix", [
+        dateFrom, dateTo, eventId, unitId || null, 1,
       ]);
       return new Response(JSON.stringify(matrix), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get work calendar for a month
     if (action === "work_calendar") {
+      const token = await getPublicToken();
       const { year, month } = body;
-      const cal = await callApi(token, "getWorkCalendar", [year, month, null]);
+      const cal = await callPublicApi(token, "getWorkCalendar", [year, month, null]);
       return new Response(JSON.stringify(cal), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create a booking
+    // Write actions use admin token
     if (action === "book") {
+      const adminToken = await getAdminToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
-      const result = await callApi(token, "book", [
-        eventId,
-        unitId,
-        date,
-        time,
-        clientData,  // { name, email, phone }
-        additionalFields || [],
-        count || 1,
+      const result = await callAdminApi(adminToken, "book", [
+        eventId, unitId, date, time,
+        clientData, additionalFields || [], count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check if a client has an active Silver/Gold membership
-    // Uses Supabase member_subscriptions table (our source of truth)
-    // Falls back to false if table doesn't exist yet
     if (action === "check_membership") {
       const { email } = body;
-      if (!email) {
-        return new Response(JSON.stringify({ hasMembership: false }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // For now, return false — memberships will be gated via Supabase
-      // once the subscription table is built. SimplyBook's public API
-      // doesn't support membership lookups without client auth signatures.
-      return new Response(JSON.stringify({ hasMembership: false }), {
+      return new Response(JSON.stringify({ hasMembership: !!email && false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Confirm a booking (some setups require confirmation after book)
     if (action === "confirm") {
+      const adminToken = await getAdminToken();
       const { bookingId } = body;
-      const result = await callApi(token, "confirmBooking", [bookingId]);
+      const result = await callAdminApi(adminToken, "confirmBooking", [bookingId]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -162,6 +142,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("simplybook-bookings error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
