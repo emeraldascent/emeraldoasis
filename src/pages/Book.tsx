@@ -178,7 +178,7 @@ function MembershipModal({
   useEffect(() => {
     if (!open) return;
 
-    let widgetInstance: any = null;
+    let _widgetInstance: any = null;
 
     const initWidget = () => {
       const container = document.getElementById('sb-membership-modal-container');
