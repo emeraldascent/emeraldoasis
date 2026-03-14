@@ -631,7 +631,13 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
               className="w-full h-12 text-white font-medium rounded-xl text-sm"
               style={{ backgroundColor: 'var(--ea-emerald)' }}
             >
-              Proceed to Payment · {service.price}
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : isMemberPass ? (
+                'Confirm Booking · Included'
+              ) : (
+                `Proceed to Payment · ${service.price}`
+              )}
             </Button>
           </div>
         )}
