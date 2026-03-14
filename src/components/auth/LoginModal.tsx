@@ -62,11 +62,27 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
         console.error('JotForm lookup error:', jotformError);
       }
 
-      if (jotformMatch) {
+      // Check if a Supabase auth account already exists for this email
+      // by attempting a sign-in with a dummy password
+      const { error: probeError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: '__probe_only__',
+      });
+
+      // "Invalid login credentials" means an account EXISTS (wrong password, but account is real)
+      // Any other error (or no error, which shouldn't happen) means no account
+      const accountExists = probeError?.message === 'Invalid login credentials';
+
+      if (accountExists) {
+        // Account already created — go straight to login
+        if (jotformMatch) setJotformData(jotformMatch);
+        setMode('login');
+      } else if (jotformMatch) {
+        // PMA member but no account yet — claim flow
         setJotformData(jotformMatch);
         setMode('claim');
       } else {
-        // Fallback path for non-JotForm accounts
+        // No JotForm record, no account — still show login (they might need to join first)
         setMode('login');
       }
     } catch {
