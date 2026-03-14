@@ -13,19 +13,19 @@ async function getAdminToken(): Promise<string> {
   const apiKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
   if (!apiKey) throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret.");
 
-  // Use API User Key auth as required by SimplyBook for untrusted IPs
+  // Try getUserToken with API User Key as password (SimplyBook requires this for untrusted IPs)
   const res = await fetch(SIMPLYBOOK_LOGIN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
-      method: "getToken",
-      params: [SIMPLYBOOK_COMPANY, apiKey],
+      method: "getUserToken",
+      params: [SIMPLYBOOK_COMPANY, "emeraldoasiscamp@gmail.com", apiKey],
       id: 1,
     }),
   });
   const data = await res.json();
-  if (data.error) throw new Error("Auth failed: " + data.error.message);
+  if (data.error) throw new Error("Admin auth failed: " + data.error.message);
   return data.result;
 }
 
