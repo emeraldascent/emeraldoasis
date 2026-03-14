@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { Map, User, ShoppingBag } from 'lucide-react';
 
 const links = [
-  { icon: Map, label: 'Property Guide', path: '/guide', emoji: '🗺️' },
+  { icon: Map, label: 'Property Map', path: '/map', emoji: '🗺️' },
+  { icon: Map, label: 'Property Guide', path: '/guide', emoji: '📋' },
   { icon: User, label: 'My Profile', path: '/profile', emoji: '👤' },
   { icon: ShoppingBag, label: 'Market', path: '#', emoji: '🌿' },
 ];
@@ -11,7 +12,7 @@ export function QuickLinks() {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-4 gap-2">
       {links.map((link) => (
         <button
           key={link.label}

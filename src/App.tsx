@@ -8,6 +8,7 @@ import { WelcomeConfirmation } from './pages/WelcomeConfirmation';
 import { Dashboard } from './pages/Dashboard';
 import { Book } from './pages/Book';
 import { Guide } from './pages/Guide';
+import { Map } from './pages/Map';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
 import { ResetPassword } from './pages/ResetPassword';
@@ -30,6 +31,15 @@ function AppContent() {
           element={
             <>
               <Guide />
+              <BottomNav isAuthenticated={isAuthenticated} />
+            </>
+          }
+        />
+        <Route
+          path="/map"
+          element={
+            <>
+              <Map />
               <BottomNav isAuthenticated={isAuthenticated} />
             </>
           }

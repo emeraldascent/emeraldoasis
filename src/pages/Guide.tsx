@@ -1,4 +1,5 @@
-import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone } from 'lucide-react';
+import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone, Map } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface GuideSection {
   title: string;
@@ -161,6 +162,8 @@ const GUIDE_SECTIONS: { heading: string; sections: GuideSection[] }[] = [
 ];
 
 export function Guide() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-md mx-auto px-4 py-5">
@@ -176,6 +179,26 @@ export function Guide() {
             Emerald Oasis @ Mandala Springs
           </p>
         </div>
+
+        {/* Map Link */}
+        <button
+          onClick={() => navigate('/map')}
+          className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors"
+        >
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+            style={{ backgroundColor: '#F0FDF4', color: 'var(--ea-emerald)' }}
+          >
+            <Map size={18} />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+              Property & Trail Map
+            </p>
+            <p className="text-[11px] text-gray-400">View campsites, trails, and base camp</p>
+          </div>
+          <span className="ml-auto text-gray-300">→</span>
+        </button>
 
         {/* PMA Reminder */}
         <div
