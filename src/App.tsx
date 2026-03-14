@@ -31,7 +31,7 @@ function AppContent() {
           element={
             <>
               <Guide />
-              <BottomNav isAuthenticated={isAuthenticated} />
+              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
             </>
           }
         />
@@ -40,7 +40,7 @@ function AppContent() {
           element={
             <>
               <Map />
-              <BottomNav isAuthenticated={isAuthenticated} />
+              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
             </>
           }
         />
@@ -59,7 +59,7 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Dashboard member={member} badgeStatus={badgeStatus} />
-              <BottomNav isAuthenticated={isAuthenticated} />
+              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
             </AuthGuard>
           }
         />
@@ -68,7 +68,7 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Book member={member} badgeStatus={badgeStatus} />
-              <BottomNav isAuthenticated={isAuthenticated} />
+              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
             </AuthGuard>
           }
         />
@@ -77,7 +77,7 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Profile member={member} onLogout={logout} onRefresh={refreshMember} />
-              <BottomNav isAuthenticated={isAuthenticated} />
+              <BottomNav isAuthenticated={isAuthenticated} userEmail={user?.email} />
             </AuthGuard>
           }
         />
