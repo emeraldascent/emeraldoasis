@@ -172,23 +172,37 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
 
       const transactionId = payResult.transactionId;
 
-      // 2. Book in SimplyBook
-      const result = await simplybookCall({
-        action: 'book',
-        eventId: service.id,
-        unitId: null,
-        date: selectedDate,
-        time: selectedTime,
-        clientData: {
-          name: `${member.first_name} ${member.last_name}`,
-          email: member.email,
-          phone: member.phone || '',
-        },
-        additionalFields: [
-          { id: 2, value: guestNames },
-          { id: 3, value: true },
-        ],
-      });
+      // 2. Book in SimplyBook (retries built into simplybookCall)
+      let result;
+      try {
+        result = await simplybookCall({
+          action: 'book',
+          eventId: service.id,
+          unitId: null,
+          date: selectedDate,
+          time: selectedTime,
+          clientData: {
+            name: `${member.first_name} ${member.last_name}`,
+            email: member.email,
+            phone: member.phone || '',
+          },
+          additionalFields: [
+            { id: 2, value: guestNames },
+            { id: 3, value: true },
+          ],
+        });
+      } catch (bookErr) {
+        // SimplyBook failed after all retries — void the charge
+        console.error('SimplyBook booking failed, voiding payment:', bookErr);
+        try {
+          await supabase.functions.invoke('authorize-payment', {
+            body: { action: 'void', transactionId },
+          });
+        } catch (voidErr) {
+          console.error('Void also failed:', voidErr);
+        }
+        throw new Error('Booking failed — your card has NOT been charged. Please try again.');
+      }
 
       const bookingFromList = Array.isArray(result?.bookings) ? result.bookings[0] : null;
       const sbBookingId = String(
