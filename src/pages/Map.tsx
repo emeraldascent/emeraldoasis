@@ -104,8 +104,9 @@ export function Map() {
               Key Locations
             </p>
             <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-              <LegendItem emoji="⛺" label="Campsites 2-8" />
-              <LegendItem emoji="🔥" label="Campsite 7 (Group)" />
+              <LegendItem emoji="⛺" label="Campsites 2, 5-8" />
+              <LegendItem emoji="🌾" label="Sites 3 & 4 (Meadow)" />
+              <LegendItem emoji="🔥" label="Site 7 (Group)" />
               <LegendItem emoji="🌉" label="Creek Crossing" />
               <LegendItem emoji="💧" label="Spring Water" />
               <LegendItem emoji="🧖" label="Sauna Area" />
