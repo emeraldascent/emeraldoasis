@@ -160,7 +160,7 @@ export function Book({ member, badgeStatus }: BookProps) {
   );
 }
 
-// SimplyBook membership — opens in new tab, auto-syncs when user returns
+// SimplyBook membership — widget_type "button" opens a popup overlay on SimplyBook's domain
 
 function MembershipModal({
   open,
@@ -173,98 +173,140 @@ function MembershipModal({
   tier: 'silver' | 'gold';
   member: Member | null;
 }) {
-  const [syncing, setSyncing] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const memberRef = useRef(member);
+  memberRef.current = member;
 
   useEffect(() => {
     if (!open) return;
 
-    // Open SimplyBook membership page directly
-    window.open('https://emeraldoasiscamp.simplybook.me/v2/#memberships', '_blank');
+    // Load SimplyBook widget script if needed, then init
+    const initWidget = () => {
+      if (!(window as any).SimplybookWidget) return;
 
-    let fired = false;
+      const predefined = memberRef.current
+        ? {
+            client: {
+              name: `${memberRef.current.first_name || ''} ${memberRef.current.last_name || ''}`.trim() || undefined,
+              email: memberRef.current.email || undefined,
+              phone: memberRef.current.phone || undefined,
+            },
+          }
+        : {};
 
-    const handleFocus = () => {
-      if (!fired) {
-        fired = true;
-        setSyncing(true);
-      }
+      new (window as any).SimplybookWidget({
+        widget_type: 'button',
+        url: 'https://emeraldoasiscamp.simplybook.me',
+        theme: 'air',
+        theme_settings: {
+          timeline_hide_unavailable: '1',
+          hide_past_days: '0',
+          timeline_show_end_time: '0',
+          timeline_modern_display: 'as_slots',
+          sb_base_color: '#13694b',
+          display_item_mode: 'block',
+          booking_nav_bg_color: '#e8ece2',
+          body_bg_color: '#ffffff',
+          dark_font_color: '#101820',
+          light_font_color: '#ffffff',
+          btn_color_1: '#288c6f',
+          sb_company_label_color: '#ffffff',
+          hide_img_mode: '0',
+          show_sidebar: '1',
+          sb_busy: '#dad2ce',
+          sb_available: '#d3e0f1',
+        },
+        timeline: 'modern',
+        datepicker: 'top_calendar',
+        is_rtl: false,
+        app_config: {
+          clear_session: 0,
+          allow_switch_to_ada: 0,
+          predefined,
+        },
+      });
+
+      // The "button" widget creates a floating trigger. Click it automatically to open the popup.
+      setTimeout(() => {
+        const sbBtn =
+          document.querySelector('.simplybook-widget-button') as HTMLElement ||
+          document.querySelector('[class*="widget-button"]') as HTMLElement;
+        if (sbBtn) sbBtn.click();
+      }, 800);
     };
 
-    // Delay listener so it doesn't fire instantly
-    const timerId = setTimeout(() => {
-      window.addEventListener('focus', handleFocus);
-    }, 1500);
+    if (!(window as any).SimplybookWidget) {
+      const script = document.createElement('script');
+      script.src = 'https://widget.simplybook.me/v2/widget/widget.js';
+      script.async = true;
+      script.onload = initWidget;
+      document.head.appendChild(script);
+    } else {
+      initWidget();
+    }
+
+    // Listen for postMessage from SimplyBook popup (booking completed, popup closed, etc.)
+    const handleMessage = (event: MessageEvent) => {
+      // SimplyBook sends various messages; detect close or completion
+      const data = event.data;
+      if (
+        data === 'closeWidget' ||
+        data === 'formCompleted' ||
+        data?.action === 'submission-completed' ||
+        (typeof data === 'string' && data.includes('close'))
+      ) {
+        syncAndClose();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    // Also detect when the SimplyBook overlay/popup is removed from the DOM
+    let observerCleanup: (() => void) | null = null;
+    const watchForClose = setTimeout(() => {
+      const observer = new MutationObserver(() => {
+        // SimplyBook popup creates an overlay element; when it's gone, the popup closed
+        const overlay = document.querySelector('.simplybook-widget-overlay, [class*="widget-overlay"]');
+        const iframe = document.querySelector('iframe[src*="simplybook"]');
+        if (!overlay && !iframe) {
+          syncAndClose();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      observerCleanup = () => observer.disconnect();
+    }, 2000);
+
+    let synced = false;
+    const syncAndClose = async () => {
+      if (synced) return;
+      synced = true;
+
+      // Sync membership status
+      const m = memberRef.current;
+      if (m) {
+        try {
+          await supabase.functions.invoke('simplybook-sync', {
+            body: { action: 'check_member', email: m.email },
+          });
+        } catch (e) {
+          console.error('Membership sync error:', e);
+        }
+      }
+      onCloseRef.current(true);
+    };
 
     return () => {
-      clearTimeout(timerId);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('message', handleMessage);
+      clearTimeout(watchForClose);
+      observerCleanup?.();
+      // Remove any SimplyBook floating button elements
+      document.querySelectorAll('.simplybook-widget-button, [class*="widget-button"]').forEach(el => el.remove());
+      document.querySelectorAll('.simplybook-widget-overlay, [class*="widget-overlay"]').forEach(el => el.remove());
     };
   }, [open]);
 
-  // When syncing starts, call the sync endpoint then close
-  useEffect(() => {
-    if (!syncing || !member) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        await supabase.functions.invoke('simplybook-sync', {
-          body: { action: 'check_member', email: member.email },
-        });
-      } catch (e) {
-        console.error('Membership sync error:', e);
-      }
-      if (!cancelled) {
-        setSyncing(false);
-        onClose(true);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [syncing, member, onClose]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white rounded-2xl p-6 max-w-sm mx-4 text-center space-y-4 shadow-xl">
-        {syncing ? (
-          <>
-            <div className="w-10 h-10 border-2 border-gray-200 border-t-emerald-500 rounded-full animate-spin mx-auto" />
-            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
-              Checking your subscription…
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
-              <Star size={24} style={{ color: 'var(--ea-emerald)' }} />
-            </div>
-            <h3 className="text-base font-semibold" style={{ color: 'var(--ea-midnight)', fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Complete Your Subscription
-            </h3>
-            <p className="text-xs text-gray-500">
-              A new tab opened with SimplyBook. Complete your {tier === 'gold' ? 'Gold' : 'Silver'} subscription there, then come back here.
-            </p>
-            <button
-              onClick={() => window.open('https://emeraldoasiscamp.simplybook.me/v2/#memberships', '_blank')}
-              className="text-xs font-medium underline"
-              style={{ color: 'var(--ea-emerald)' }}
-            >
-              Reopen subscription page
-            </button>
-            <button
-              onClick={() => onClose(false)}
-              className="block mx-auto text-xs text-gray-400 hover:text-gray-600 mt-2"
-            >
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  // No custom modal UI — SimplyBook renders its own popup overlay
+  return null;
 }
 
 const PASS_LIMITS = { silver: 5, gold: 10 } as const;
