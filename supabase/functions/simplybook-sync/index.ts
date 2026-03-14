@@ -47,8 +47,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!SIMPLYBOOK_ADMIN_API_KEY) {
-      throw new Error("Missing SIMPLYBOOK_ADMIN_API_KEY secret. Please add it to Supabase Edge Function secrets.");
+    if (!SIMPLYBOOK_API_KEY) {
+      throw new Error("Missing SIMPLYBOOK_API_KEY secret.");
     }
 
     console.log("Authenticating with SimplyBook Admin API...");
