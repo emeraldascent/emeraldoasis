@@ -248,7 +248,7 @@ export function AdminCalendar() {
                           <span className="text-gray-400">{b.member.email}</span>
                         </p>
                       )}
-                      {b.guest_names && b.guest_names !== `${b.member?.first_name} ${b.member?.last_name}` && (
+                      {b.guest_names && Array.isArray(b.guest_names) && b.guest_names.join(', ') !== `${b.member?.first_name} ${b.member?.last_name}` && (
                         <p className="text-[10px] text-gray-400 mt-0.5">
                           Guests: {b.guest_names}
                         </p>

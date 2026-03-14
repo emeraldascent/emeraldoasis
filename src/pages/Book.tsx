@@ -178,7 +178,8 @@ function MembershipModal({
   useEffect(() => {
     if (!open) return;
 
-    let _widgetInstance: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    let widgetInstance: any = null;
 
     const initWidget = () => {
       const container = document.getElementById('sb-membership-modal-container');
