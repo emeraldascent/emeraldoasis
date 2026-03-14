@@ -118,7 +118,7 @@ serve(async (req) => {
         headers: {
           "Content-Type": "application/json",
           "X-Company-Login": SIMPLYBOOK_COMPANY,
-          "X-User-Token": adminToken,
+          "X-Token": adminToken,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
