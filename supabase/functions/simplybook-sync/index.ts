@@ -51,11 +51,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("Using API User Key for SimplyBook auth...");
-    const apiKey = getApiUserKey();
+    console.log("Authenticating with SimplyBook API User Key...");
+    const token = await getAdminToken();
+    console.log("Session token obtained!");
 
     console.log("Fetching client list...");
-    const clientsRaw = await callAdminApi(apiKey, "getClientList", [null, "client", null]);
+    const clientsRaw = await callAdminApi(token, "getClientList", [null, "client", null]);
     const clientMap = clientsRaw?.data || clientsRaw || {};
     const clients: any[] = Object.values(clientMap);
     console.log(`Found ${clients.length} clients.`);
