@@ -320,7 +320,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             <p className="text-[11px] text-gray-400">
               {step === 'date' && (isCampsite ? 'Select your check-in date' : 'Select a date')}
               {step === 'time' && selectedDate && `${formatDate(selectedDate)} · Pick a time`}
-              {step === 'confirm' && 'Confirm your booking'}
+              {step === 'confirm' && 'Review your booking'}
+              {step === 'payment' && 'Enter payment'}
             </p>
           </div>
           <span className="ml-auto text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
