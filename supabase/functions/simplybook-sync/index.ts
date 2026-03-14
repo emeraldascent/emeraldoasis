@@ -17,7 +17,7 @@ async function getAdminToken(): Promise<string> {
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "getToken",
-      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_ADMIN_API_KEY],
+      params: [SIMPLYBOOK_COMPANY, SIMPLYBOOK_API_KEY],
       id: 1,
     }),
   });
