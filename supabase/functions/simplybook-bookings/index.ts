@@ -122,14 +122,29 @@ serve(async (req) => {
       };
       const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
-      // Convert additional fields from array [{id, value}] to object {id: value}
+      // SimplyBook expects additional fields keyed by field hash name, not numeric ID
+      // Fetch field definitions to map id → hash name
+      const fieldDefs = await callPublicApi(token, "getAdditionalFields", [eventId]);
+      const fieldList: any[] = Array.isArray(fieldDefs) ? fieldDefs : Object.values(fieldDefs);
+      const idToName: Record<string, string> = {};
+      for (const f of fieldList) {
+        idToName[String(f.id)] = f.name;
+      }
+
       let additionalObj: Record<string, any> = {};
       if (Array.isArray(additionalFields)) {
         for (const f of additionalFields) {
-          if (f && f.id !== undefined) additionalObj[String(f.id)] = f.value;
+          if (f && f.id !== undefined) {
+            const key = idToName[String(f.id)] || String(f.id);
+            additionalObj[key] = f.value;
+          }
         }
       } else if (additionalFields && typeof additionalFields === "object") {
-        additionalObj = additionalFields;
+        // If already keyed by name/id, try to remap
+        for (const [k, v] of Object.entries(additionalFields)) {
+          const key = idToName[k] || k;
+          additionalObj[key] = v;
+        }
       }
 
       console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, additional=${JSON.stringify(additionalObj)}`);
