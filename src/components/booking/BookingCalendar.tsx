@@ -134,11 +134,36 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
     setStep('confirm');
   };
 
-  const handleBook = async () => {
+  const handleProceedToPayment = () => {
+    setStep('payment');
+  };
+
+  const parsePrice = (p: string) => {
+    const match = p.replace(/[^0-9.]/g, '');
+    return parseFloat(match) || 0;
+  };
+
+  const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }) => {
     if (!selectedDate || !selectedTime) return;
     setLoading(true);
     setError('');
     try {
+      // 1. Charge via Authorize.net
+      const { data: payResult, error: payError } = await supabase.functions.invoke('authorize-payment', {
+        body: {
+          opaqueData,
+          amount: parsePrice(service.price),
+          description: `${service.name} — ${selectedDate}`,
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+        },
+      });
+      if (payError) throw payError;
+      if (!payResult?.success) throw new Error(payResult?.error || 'Payment declined');
+
+      const transactionId = payResult.transactionId;
+
+      // 2. Book in SimplyBook
       const result = await simplybookCall({
         action: 'book',
         eventId: service.id,
@@ -184,16 +209,27 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
           });
         } catch (logErr) {
           console.warn('Failed to log booking to backend:', logErr);
-          // Non-blocking — booking succeeded upstream
         }
-
-        setStep('success');
-      } else {
-        setError('Booking was not confirmed. Please try again or contact us.');
       }
+
+      // 3. Send confirmation email (non-blocking)
+      supabase.functions.invoke('send-booking-email', {
+        body: {
+          email: member.email,
+          memberName: `${member.first_name} ${member.last_name}`,
+          serviceName: service.name,
+          date: selectedDate,
+          time: selectedTime,
+          price: service.price,
+          transactionId,
+          isCampsite,
+        },
+      }).catch((err) => console.warn('Email send failed:', err));
+
+      setStep('success');
     } catch (err) {
-      console.error('Booking failed:', err);
-      setError('Booking failed. Please try again or book directly at emeraldoasiscamp.simplybook.me');
+      console.error('Payment/booking failed:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
