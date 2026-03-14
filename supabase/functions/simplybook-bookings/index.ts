@@ -112,8 +112,18 @@ serve(async (req) => {
     if (action === "book") {
       const token = await getPublicToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
+
+      // Event-to-Unit mapping based on SimplyBook configuration
+      const EVENT_UNIT_MAP: Record<number, number> = {
+        18: 22, 19: 22, 22: 22, 23: 22, // Day passes → Day Pass Parking
+        20: 22, 21: 22,                   // Member passes → Day Pass Parking
+        11: 4, 12: 5, 13: 6, 14: 7,      // Campsites 3-6
+        9: 23, 8: 8, 10: 3,              // Campsite 7 Social/Group, Creekside
+      };
+      const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
+
       const result = await callPublicApi(token, "book", [
-        eventId, unitId || null, date, time, clientData, additionalFields || [], count || 1,
+        eventId, resolvedUnitId, date, time, clientData, additionalFields || [], count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
