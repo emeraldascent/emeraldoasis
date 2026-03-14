@@ -163,8 +163,9 @@ serve(async (req) => {
       console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, client=${clientId}, date=${date}, time=${time}`);
 
       // Admin API: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
+      // Pass null for endDate/endTime so SimplyBook auto-calculates based on event duration
       const result = await callAdminApi(adminToken, "book", [
-        eventId, resolvedUnitId, clientId, date, time, date, time, null, additionalFields || {}, count || 1,
+        eventId, resolvedUnitId, clientId, date, time, null, null, null, additionalFields || {}, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
