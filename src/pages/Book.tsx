@@ -21,8 +21,8 @@ const DAY_PASSES: ServiceCard[] = [
 ];
 
 const MEMBER_PASSES: ServiceCard[] = [
-  { id: 20, name: 'Silver/Gold Pass — 2 Hours', description: 'Member-rate day access', price: '$6', icon: <Star size={18} /> },
-  { id: 21, name: 'Silver/Gold Pass — 4 Hours', description: 'Member-rate extended access', price: '$10', icon: <Star size={18} /> },
+  { id: 20, name: 'Silver/Gold Pass — 2 Hours', description: 'Included with Silver/Gold subscription', price: 'Included', icon: <Star size={18} /> },
+  { id: 21, name: 'Silver/Gold Pass — 4 Hours', description: 'Included with Silver/Gold subscription', price: 'Included', icon: <Star size={18} /> },
 ];
 
 const CAMPSITES: ServiceCard[] = [
