@@ -155,11 +155,19 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
         ],
       });
 
-      if (result?.id || result?.bookingId) {
-        const sbBookingId = String(result.id || result.bookingId);
+      const bookingFromList = Array.isArray(result?.bookings) ? result.bookings[0] : null;
+      const sbBookingId = String(
+        result?.id ??
+        result?.bookingId ??
+        result?.booking_id ??
+        bookingFromList?.id ??
+        ''
+      );
+
+      if (sbBookingId) {
         setBookingId(sbBookingId);
 
-        // Log booking to Supabase for pass tracking
+        // Log booking to backend for pass tracking
         const isMemberPass = [20, 21].includes(service.id);
         try {
           await supabase.from('member_bookings').insert({
@@ -174,8 +182,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             status: 'confirmed',
           });
         } catch (logErr) {
-          console.warn('Failed to log booking to Supabase:', logErr);
-          // Non-blocking — SimplyBook booking succeeded
+          console.warn('Failed to log booking to backend:', logErr);
+          // Non-blocking — booking succeeded upstream
         }
 
         setStep('success');
