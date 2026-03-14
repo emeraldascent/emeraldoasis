@@ -151,10 +151,9 @@ serve(async (req) => {
 
       console.log(`Booking with clientId=${clientId}, eventId=${eventId}, date=${date}, time=${time}`);
 
-      // Step 2: Book using admin API — the admin book method signature is:
-      // book(eventId, unitId, date, time, clientId, additionalFields, count)
+      // Admin API book signature: book(eventId, unitId, clientId, startDate, startTime, endDate, endTime, clientTimeOffset, additional, count)
       const result = await callAdminApi(adminToken, "book", [
-        eventId, unitId, date, time, clientId || clientData, additionalFields || [], count || 1,
+        eventId, unitId || null, clientId, date, time, date, time, null, additionalFields || {}, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
