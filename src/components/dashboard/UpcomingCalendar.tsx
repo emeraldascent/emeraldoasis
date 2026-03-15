@@ -160,7 +160,7 @@ export function UpcomingCalendar() {
             ))}
           </div>
         )}
-      </div>
+      </button>
     </div>
   );
 }

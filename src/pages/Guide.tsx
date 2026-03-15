@@ -88,8 +88,8 @@ const AMENITIES: Amenity[] = [
     icon: <Store size={18} />,
     details: [
       'Locally sourced snacks & drinks',
-      'Cannabis apothecary (the only exception to our substance policy)',
       'Handmade crafts & wellness products',
+      'Provisions & trail supplies',
       'Open during property hours',
     ],
   },
