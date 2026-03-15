@@ -10,7 +10,7 @@ const authNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
   { path: '/events', label: 'Events', icon: PartyPopper },
-  { path: '/guide', label: 'Guide', icon: TreePine },
+  { path: '/guide', label: 'Explore', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -19,7 +19,7 @@ const adminNav = [
   { path: '/book', label: 'Book', icon: CalendarDays },
   { path: '/events', label: 'Events', icon: PartyPopper },
   { path: '/admin', label: 'Admin', icon: Shield },
-  { path: '/guide', label: 'Guide', icon: TreePine },
+  { path: '/guide', label: 'Explore', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -27,7 +27,7 @@ const publicNav = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/join', label: 'Join', icon: PenLine },
   { path: '/book', label: 'Book', icon: CalendarDays },
-  { path: '/guide', label: 'Guide', icon: TreePine },
+  { path: '/guide', label: 'Explore', icon: TreePine },
 ];
 
 export function BottomNav({ isAuthenticated, isAdmin }: BottomNavProps) {

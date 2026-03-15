@@ -5,7 +5,7 @@ const links = [
   { icon: Map, label: 'Property Map', path: '/map', emoji: '🗺️' },
   { icon: Map, label: 'Property Guide', path: '/guide', emoji: '📋' },
   { icon: User, label: 'My Profile', path: '/profile', emoji: '👤' },
-  { icon: ShoppingBag, label: 'Market', path: '#', emoji: '🌿' },
+  { icon: ShoppingBag, label: 'Market', path: '/guide', emoji: '🌿' },
 ];
 
 export function QuickLinks() {
