@@ -59,7 +59,8 @@ export function MemberPassSection({
         .eq('member_id', member.id)
         .eq('is_member_pass', true)
         .eq('status', 'confirmed')
-        .gte('booking_date', monthStart);
+        .gte('booking_date', monthStart)
+        .not('service_name', 'ilike', '%Welcome%');
 
       if (!error && count !== null) setPassesUsed(count);
       setLoadingUsage(false);
