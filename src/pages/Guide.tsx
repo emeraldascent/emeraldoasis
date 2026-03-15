@@ -90,7 +90,7 @@ const AMENITIES: Amenity[] = [
       'Locally sourced snacks & drinks',
       'Handmade crafts & wellness products',
       'Provisions & trail supplies',
-      'Open during property hours',
+      'Open during select hours',
     ],
   },
   {
