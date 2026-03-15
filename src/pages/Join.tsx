@@ -50,15 +50,11 @@ export function Join() {
   const checkEmail = async () => {
     if (!email.trim()) return;
     setChecking(true);
-    const { data } = await supabase
-      .from('jotform_submissions')
-      .select('id')
-      .eq('email', email.toLowerCase().trim())
-      .limit(1)
-      .maybeSingle();
+    const { data: exists } = await supabase
+      .rpc('jotform_email_exists', { _email: email.trim() });
     setChecking(false);
 
-    if (data) {
+    if (exists) {
       setStep('already_member');
     } else {
       setStep('form');
