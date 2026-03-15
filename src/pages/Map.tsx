@@ -23,7 +23,7 @@ const STATIC_MAPS: Record<string, { src: string; description: string }> = {
 };
 
 export function Map() {
-  const [activeMode, setActiveMode] = useState<MapMode>('interactive');
+  const [activeMode, setActiveMode] = useState<MapMode>('trails');
   const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
 

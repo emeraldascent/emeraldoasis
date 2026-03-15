@@ -176,7 +176,7 @@ serve(async (req: Request) => {
         <div style="background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; margin: 16px 0 0 0;">
           <p style="color: #92400e; font-size: 12px; font-weight: 600; margin: 0 0 6px 0;">🅿️ Parking</p>
           <ul style="color: #78716c; font-size: 11px; line-height: 1.7; margin: 0; padding-left: 16px;">
-            <li>Spring water fill-ups: 15-min limit only</li>
+            <li>Spring water fill-ups: 30-min limit only</li>
             ${isCampsite
               ? `<li><strong>Lower Lot</strong> — 5 camping spots, 2 market</li>
                  <li><strong>Overflow Lot</strong> — 3 camping spots</li>`

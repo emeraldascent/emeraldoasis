@@ -69,7 +69,7 @@ export const KEY_LOCATIONS: KeyLocation[] = [
   {
     id: 'market',
     name: 'Emerald Market',
-    description: 'Organic products, wellness goods, and Mandala Chocolate',
+    description: 'Coming April 2026 — Organic products, wellness goods, and Mandala Chocolate (select days/hrs)',
     coords: [35.733, -82.428],
     icon: '🛒',
     category: 'amenity',

@@ -24,7 +24,7 @@ const GUIDE_SECTIONS: { heading: string; sections: GuideSection[] }[] = [
         title: 'Parking',
         icon: <Car size={16} />,
         items: [
-          'Spring water fill-ups: 15-minute parking limit',
+          'Spring water fill-ups: 30-minute parking limit',
           'Lower Lot — 5 camping spots, 2 market spots',
           'Main Lot — 7 spots for events & day pass guests',
           'Overflow Lot — 3 camping, 5 events/day pass',
