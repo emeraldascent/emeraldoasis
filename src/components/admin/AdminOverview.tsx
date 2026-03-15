@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Users, Calendar, AlertTriangle } from 'lucide-react';
 
 interface Stats {
-  todayCheckIns: number;
+  todayBookings: number;
   activeMembers: number;
   expiringThisWeek: number;
 }
