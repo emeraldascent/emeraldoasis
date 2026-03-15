@@ -58,9 +58,9 @@ export function AdminOverview() {
 
   const cards = [
     {
-      icon: LogIn,
-      label: "Today's Check-ins",
-      value: stats.todayCheckIns,
+      icon: Calendar,
+      label: "Bookings Today",
+      value: stats.todayBookings,
       color: 'var(--ea-emerald)',
       bg: '#F0FDF4',
     },
