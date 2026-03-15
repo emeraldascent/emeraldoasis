@@ -173,6 +173,19 @@ serve(async (req: Request) => {
         <p style="color: #888; font-size: 13px; line-height: 1.5;">
           Please arrive on time. All guests must be PMA members before arrival.
         </p>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin: 20px 0;">
+          <p style="color: #1a3a2a; font-size: 13px; font-weight: 600; margin: 0 0 8px 0;">Quick Guide to the App</p>
+          <ul style="color: #555; font-size: 12px; line-height: 1.8; margin: 0; padding-left: 18px;">
+            <li><strong>Dashboard</strong> — View your upcoming bookings and membership status</li>
+            <li><strong>Book</strong> — Reserve day passes, member passes, and campsites</li>
+            <li><strong>Guide</strong> — Property rules, directions, and what to bring</li>
+            <li><strong>Map</strong> — Interactive property map with trails and key locations</li>
+            <li><strong>Profile</strong> — Update your info, photo, and manage your account</li>
+          </ul>
+          <p style="color: #888; font-size: 11px; margin: 10px 0 0 0;">
+            Access the app anytime at <a href="https://emeraldoasis.lovable.app" style="color: #2d6a4f; text-decoration: none; font-weight: 600;">emeraldoasis.lovable.app</a>
+          </p>
+        </div>
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
         <p style="color: #aaa; font-size: 11px; text-align: center;">
           Emerald Oasis · Private Members Club
