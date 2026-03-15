@@ -14,17 +14,67 @@ const TIER_PRICES: Record<string, number> = {
   gold: 50,
 };
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limit
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!checkRateLimit(clientIp)) {
+    return respond(429, { error: "Too many requests. Please wait a moment." });
+  }
+
   try {
+    // 0. Authenticate caller
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return respond(401, { error: "Not authenticated" });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return respond(401, { error: "Invalid session" });
+    }
+
     const { opaqueData, tier, memberId, email, memberName } = await req.json();
 
     // Validate tier
     if (!tier || !TIER_PRICES[tier]) {
       return respond(400, { error: "Invalid membership tier" });
+    }
+
+    // Verify the caller owns this member record
+    const { data: memberRecord, error: memberError } = await supabase
+      .from("members")
+      .select("id, user_id")
+      .eq("id", memberId)
+      .maybeSingle();
+
+    if (memberError || !memberRecord || memberRecord.user_id !== user.id) {
+      return respond(403, { error: "Unauthorized: you don't own this member record" });
     }
 
     const amount = TIER_PRICES[tier];
@@ -89,8 +139,8 @@ serve(async (req: Request) => {
 
     console.log(`Payment successful: $${amount} for ${tier} membership, txn ${transId}`);
 
-    // 2. Update member in our database
-    const supabase = createClient(
+    // 2. Update subscription fields (NOT base membership dates) using service role
+    const adminSupabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
@@ -98,19 +148,18 @@ serve(async (req: Request) => {
     const now = new Date();
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from("members")
       .update({
         subscription_active: true,
         subscription_tier: tier,
-        membership_start: now.toISOString(),
-        membership_end: thirtyDaysLater.toISOString(),
+        subscription_start: now.toISOString(),
+        subscription_end: thirtyDaysLater.toISOString(),
       })
       .eq("id", memberId);
 
     if (updateError) {
       console.error("DB update failed:", updateError);
-      // Payment went through but DB failed — log for manual resolution
       return respond(500, {
         error: "Payment succeeded but account update failed. Contact support.",
         transactionId: transId,
@@ -121,7 +170,6 @@ serve(async (req: Request) => {
     try {
       const sbApiKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
       if (sbApiKey) {
-        // Get admin token
         const loginRes = await fetch("https://user-api.simplybook.me/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -160,7 +208,6 @@ serve(async (req: Request) => {
           if (searchData.result?.length > 0) {
             clientId = searchData.result[0].id;
           } else {
-            // Create client
             const nameParts = (memberName || "").split(" ");
             const createRes = await fetch(sbUrl, {
               method: "POST",
@@ -181,10 +228,8 @@ serve(async (req: Request) => {
           }
 
           if (clientId) {
-            // Update simplybook_client_id in our DB
-            await supabase.from("members").update({ simplybook_client_id: clientId }).eq("id", memberId);
+            await adminSupabase.from("members").update({ simplybook_client_id: clientId }).eq("id", memberId);
 
-            // Get available memberships to find the right one
             const membershipsRes = await fetch(sbUrl, {
               method: "POST",
               headers: sbHeaders,
@@ -198,14 +243,12 @@ serve(async (req: Request) => {
             const membershipsData = await membershipsRes.json();
             console.log("SimplyBook memberships:", JSON.stringify(membershipsData.result));
 
-            // Find membership matching tier name (Silver/Gold)
             const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
             const membership = (membershipsData.result || []).find(
               (m: any) => m.name?.toLowerCase().includes(tier) || m.name?.includes(tierName)
             );
 
             if (membership) {
-              // Issue membership to client
               const issueRes = await fetch(sbUrl, {
                 method: "POST",
                 headers: sbHeaders,
