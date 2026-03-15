@@ -74,7 +74,13 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
     body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {
+    const code = data.error?.code ? ` (${data.error.code})` : "";
+    const details = data.error?.data
+      ? ` | ${typeof data.error.data === "string" ? data.error.data : JSON.stringify(data.error.data)}`
+      : "";
+    throw new Error(`${data.error.message}${code}${details}`);
+  }
   return data.result;
 }
 
