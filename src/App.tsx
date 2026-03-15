@@ -62,7 +62,7 @@ function AppContent() {
           path="/dashboard"
           element={
             <AuthGuard user={user} loading={loading}>
-              <Dashboard member={member} badgeStatus={badgeStatus} />
+              <Dashboard member={member} badgeStatus={badgeStatus} onRefreshMember={refreshMember} />
               <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }
