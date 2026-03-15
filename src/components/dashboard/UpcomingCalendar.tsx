@@ -48,6 +48,7 @@ function formatTime(t: string) {
 }
 
 export function UpcomingCalendar() {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
