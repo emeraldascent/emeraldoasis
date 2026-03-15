@@ -19,6 +19,7 @@ interface ProfileProps {
 export function Profile({ member, onLogout, onRefresh }: ProfileProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [form, setForm] = useState({
     first_name: member?.first_name ?? '',
     last_name: member?.last_name ?? '',
