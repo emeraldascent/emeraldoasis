@@ -1,4 +1,4 @@
-import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone, Map } from 'lucide-react';
+import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone, Map, Sparkles, CalendarCheck, Users, Tent, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface GuideSection {
