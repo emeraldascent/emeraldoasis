@@ -9,6 +9,7 @@ interface BottomNavProps {
 const authNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
+  { path: '/events', label: 'Events', icon: PartyPopper },
   { path: '/guide', label: 'Guide', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },
 ];
