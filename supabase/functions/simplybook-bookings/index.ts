@@ -78,6 +78,15 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
   return data.result;
 }
 
+function addMinutesToDateTime(date: string, time: string, minutes: number) {
+  const [h, m, s] = time.split(":").map((x) => Number(x || 0));
+  const dt = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+  dt.setMinutes(dt.getMinutes() + minutes);
+  const endDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  const endTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}`;
+  return { endDate, endTime };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -108,9 +117,9 @@ serve(async (req) => {
       });
     }
 
-    // Booking uses admin API token for write access
+    // Booking: try public API first, fall back to admin flow when client auth is required
     if (action === "book") {
-      const adminToken = await getAdminToken();
+      const publicToken = await getPublicToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
 
       // Event-to-Unit mapping based on SimplyBook configuration
@@ -123,10 +132,8 @@ serve(async (req) => {
       const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
       // SimplyBook expects additional fields keyed by field hash name, not numeric ID
-      // Fetch field definitions to map id → hash name (use public token for read)
-      const publicToken = await getPublicToken();
       const fieldDefs = await callPublicApi(publicToken, "getAdditionalFields", [eventId]);
-      const fieldList: any[] = Array.isArray(fieldDefs) ? fieldDefs : Object.values(fieldDefs);
+      const fieldList: any[] = Array.isArray(fieldDefs) ? fieldDefs : Object.values(fieldDefs || {});
       const idToName: Record<string, string> = {};
       for (const f of fieldList) {
         idToName[String(f.id)] = f.name;
@@ -149,12 +156,85 @@ serve(async (req) => {
 
       console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, additional=${JSON.stringify(additionalObj)}`);
 
-      const result = await callAdminApi(adminToken, "book", [
-        eventId, resolvedUnitId, date, time, clientData, additionalObj, count || 1,
-      ]);
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      try {
+        const result = await callPublicApi(publicToken, "book", [
+          eventId, resolvedUnitId, date, time, clientData, additionalObj, count || 1,
+        ]);
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (publicErr) {
+        const publicMsg = publicErr instanceof Error ? publicErr.message : String(publicErr);
+        if (!publicMsg.toLowerCase().includes("client authorization required")) {
+          throw publicErr;
+        }
+
+        console.warn("Public booking requires client auth; falling back to admin booking flow");
+
+        const adminToken = await getAdminToken();
+
+        const fullName = String(clientData?.name || "").trim();
+        const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
+        const safeEmail = String(clientData?.email || "").trim();
+        const clientPayload = {
+          name: fullName || "Guest User",
+          email: safeEmail || `guest_${Date.now()}@example.com`,
+          phone: normalizedPhone || "0000000000",
+          address1: "N/A",
+          address2: "N/A",
+          city: "N/A",
+          zip: "00000",
+          country_id: 1,
+        };
+
+        let clientResult: unknown;
+        try {
+          clientResult = await callAdminApi(adminToken, "addClient", [clientPayload]);
+        } catch (addClientErr) {
+          throw new Error(`Admin addClient failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
+        }
+
+        const clientId = Number(
+          typeof clientResult === "object" && clientResult !== null
+            ? (clientResult as Record<string, unknown>).id ?? clientResult
+            : clientResult
+        );
+
+        if (!clientId || Number.isNaN(clientId)) {
+          throw new Error("Failed to resolve client ID for admin booking");
+        }
+
+        const events = await callPublicApi(publicToken, "getEventList", []);
+        const eventList: any[] = Array.isArray(events) ? events : Object.values(events || {});
+        const eventInfo = eventList.find((e: any) => Number(e?.id) === Number(eventId));
+        const durationMinutes = Number(eventInfo?.duration) > 0 ? Number(eventInfo.duration) : 30;
+        const { endDate, endTime } = addMinutesToDateTime(date, time, durationMinutes);
+        const clientTimeOffset = 60;
+
+        let result: unknown;
+        try {
+          result = await callAdminApi(adminToken, "book", [
+            eventId,
+            resolvedUnitId,
+            clientId,
+            date,
+            time,
+            endDate,
+            endTime,
+            clientTimeOffset,
+            additionalObj,
+            count || 1,
+            null,
+            null,
+          ]);
+        } catch (adminBookErr) {
+          throw new Error(`Admin book failed: ${adminBookErr instanceof Error ? adminBookErr.message : String(adminBookErr)}`);
+        }
+
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
 
