@@ -88,7 +88,7 @@ const AMENITIES: Amenity[] = [
     tagline: 'Local goods & provisions',
     icon: <Store size={18} />,
     details: [
-      'Locally sourced snacks & drinks',
+      'Natural, organic & regenerative snacks & drinks',
       'Handmade crafts & wellness products',
       'Provisions & trail supplies',
       'Open during select hours',
