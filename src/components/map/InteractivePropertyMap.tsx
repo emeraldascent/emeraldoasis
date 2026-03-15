@@ -123,7 +123,7 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
   }, [startGps]);
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ height: 'calc(100vh - 260px)', minHeight: '340px' }}>
+    <div className="relative w-full rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: '300px', maxHeight: '500px' }}>
       <MapContainer
         center={MAP_CONFIG.center}
         zoom={MAP_CONFIG.defaultZoom}

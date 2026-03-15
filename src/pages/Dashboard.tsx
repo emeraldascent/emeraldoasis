@@ -93,7 +93,7 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <Droplets size={14} style={{ color: 'var(--ea-emerald)' }} />
-                  <span>Spring water (15 min parking)</span>
+                  <span>Spring water (30 min parking)</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <ShoppingBag size={14} style={{ color: 'var(--ea-emerald)' }} />
