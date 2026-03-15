@@ -84,12 +84,12 @@ const AMENITIES: Amenity[] = [
     id: 'emerald-market',
     name: 'Emerald Market',
     emoji: '🌿',
-    tagline: 'Local goods, apothecary & provisions',
+    tagline: 'Local goods & provisions',
     icon: <Store size={18} />,
     details: [
       'Locally sourced snacks & drinks',
-      'Cannabis apothecary (the only exception to our substance policy)',
       'Handmade crafts & wellness products',
+      'Provisions & trail supplies',
       'Open during property hours',
     ],
   },
@@ -178,7 +178,6 @@ const RULE_GROUPS: { heading: string; sections: RuleSection[] }[] = [
         icon: <ShieldAlert size={14} />,
         items: [
           'No alcohol, smoking, or vaping on property',
-          'Cannabis from our apothecary is the exception',
         ],
       },
       {
