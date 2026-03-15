@@ -24,7 +24,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   const currentIndex = TIER_ORDER.indexOf(member.membership_tier);
   const availableTiers = mode === 'upgrade'
     ? TIER_ORDER.filter((_, i) => i > currentIndex)
-    : [member.membership_tier];
+    : TIER_ORDER;
 
   const activeTier = mode === 'extend' ? member.membership_tier : selectedTier;
   const activeConfig = activeTier ? TIER_CONFIG[activeTier] : null;
