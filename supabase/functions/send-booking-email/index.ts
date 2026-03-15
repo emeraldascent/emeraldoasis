@@ -173,6 +173,19 @@ serve(async (req: Request) => {
         <p style="color: #888; font-size: 13px; line-height: 1.5;">
           Please arrive on time. All guests must be PMA members before arrival.
         </p>
+        <div style="background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; margin: 16px 0 0 0;">
+          <p style="color: #92400e; font-size: 12px; font-weight: 600; margin: 0 0 6px 0;">🅿️ Parking</p>
+          <ul style="color: #78716c; font-size: 11px; line-height: 1.7; margin: 0; padding-left: 16px;">
+            <li>Spring water fill-ups: 15-min limit only</li>
+            ${isCampsite
+              ? `<li><strong>Lower Lot</strong> — 5 camping spots, 2 market</li>
+                 <li><strong>Overflow Lot</strong> — 3 camping spots</li>`
+              : `<li><strong>Main Lot</strong> — 7 spots for events & day pass</li>
+                 <li><strong>Overflow Lot</strong> — 5 spots for events/day pass</li>
+                 <li><strong>Roadside</strong> — 10–15 overflow spots</li>`
+            }
+          </ul>
+        </div>
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin: 20px 0;">
           <p style="color: #1a3a2a; font-size: 13px; font-weight: 600; margin: 0 0 8px 0;">Quick Guide to the App</p>
           <ul style="color: #555; font-size: 12px; line-height: 1.8; margin: 0; padding-left: 18px;">
