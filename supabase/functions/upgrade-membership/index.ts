@@ -110,7 +110,33 @@ serve(async (req: Request) => {
       ? `Extend ${tier} PMA Membership — ${TIER_DAYS[tier]} days`
       : `Upgrade to ${tier} PMA Membership — ${TIER_DAYS[tier]} days`;
 
-    const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+    let xmlBody: string;
+
+    if (useSavedCard) {
+      // Charge using saved customer profile
+      xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+<createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
+  <merchantAuthentication>
+    <name>${esc(apiLoginId)}</name>
+    <transactionKey>${esc(transactionKey)}</transactionKey>
+  </merchantAuthentication>
+  <transactionRequest>
+    <transactionType>authCaptureTransaction</transactionType>
+    <amount>${amount.toFixed(2)}</amount>
+    <profile>
+      <customerProfileId>${esc(memberRecord.authnet_customer_profile_id!)}</customerProfileId>
+      <paymentProfile>
+        <paymentProfileId>${esc(memberRecord.authnet_payment_profile_id!)}</paymentProfileId>
+      </paymentProfile>
+    </profile>
+    <order>
+      <description>${esc(description)}</description>
+    </order>
+  </transactionRequest>
+</createTransactionRequest>`;
+    } else {
+      // Charge using opaque data (one-time token)
+      xmlBody = `<?xml version="1.0" encoding="utf-8"?>
 <createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
   <merchantAuthentication>
     <name>${esc(apiLoginId)}</name>
@@ -137,6 +163,7 @@ serve(async (req: Request) => {
     </billTo>
   </transactionRequest>
 </createTransactionRequest>`;
+    }
 
     const res = await fetch(AUTHNET_URL, {
       method: "POST",
