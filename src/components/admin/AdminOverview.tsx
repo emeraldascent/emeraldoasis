@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, LogIn, AlertTriangle } from 'lucide-react';
+import { Users, Calendar, AlertTriangle } from 'lucide-react';
 
 interface Stats {
-  todayCheckIns: number;
+  todayBookings: number;
   activeMembers: number;
   expiringThisWeek: number;
 }
 
 export function AdminOverview() {
   const [stats, setStats] = useState<Stats>({
-    todayCheckIns: 0,
+    todayBookings: 0,
     activeMembers: 0,
     expiringThisWeek: 0,
   });
@@ -25,12 +25,12 @@ export function AdminOverview() {
       weekFromNow.setDate(weekFromNow.getDate() + 7);
       const weekStr = weekFromNow.toISOString().split('T')[0];
 
-      // Today's check-ins
-      const { count: checkInCount } = await supabase
-        .from('check_ins')
+      // Today's bookings
+      const { count: bookingCount } = await supabase
+        .from('member_bookings')
         .select('*', { count: 'exact', head: true })
-        .gte('checked_in_at', `${todayStr}T00:00:00`)
-        .lt('checked_in_at', `${todayStr}T23:59:59`);
+        .eq('booking_date', todayStr)
+        .eq('status', 'confirmed');
 
       // Active members
       const { count: activeCount } = await supabase
@@ -47,7 +47,7 @@ export function AdminOverview() {
         .lte('membership_end', weekStr);
 
       setStats({
-        todayCheckIns: checkInCount ?? 0,
+        todayBookings: bookingCount ?? 0,
         activeMembers: activeCount ?? 0,
         expiringThisWeek: expiringCount ?? 0,
       });
@@ -58,9 +58,9 @@ export function AdminOverview() {
 
   const cards = [
     {
-      icon: LogIn,
-      label: "Today's Check-ins",
-      value: stats.todayCheckIns,
+      icon: Calendar,
+      label: "Bookings Today",
+      value: stats.todayBookings,
       color: 'var(--ea-emerald)',
       bg: '#F0FDF4',
     },
