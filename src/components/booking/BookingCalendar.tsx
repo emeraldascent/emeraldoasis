@@ -220,7 +220,7 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
           date: selectedDate,
           time: selectedTime,
           price: isFreeWelcome ? 'Free Welcome Pass' : 'Included with membership',
-          transactionId: 'MEMBER-PASS',
+          transactionId: isFreeWelcome ? 'WELCOME-PASS' : 'MEMBER-PASS',
           isCampsite,
         },
       }).catch((err) => console.warn('Email send failed:', err));
