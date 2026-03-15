@@ -214,53 +214,15 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
       )}
 
       {/* Zoom controls */}
-      <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
-        <ZoomButton dir="in" />
-        <ZoomButton dir="out" />
-      </div>
-    </div>
-  );
-}
-
-function ZoomButton({ dir }: { dir: 'in' | 'out' }) {
-  return (
-    <button
-      className="zoom-btn w-9 h-9 rounded-lg bg-white/95 shadow border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-white active:scale-95 transition-transform"
-      style={{ color: 'var(--ea-midnight)' }}
-      data-zoom={dir}
-      onClick={(e) => {
-        // Walk up to find the leaflet map container and zoom
-        const container = (e.target as HTMLElement).closest('.leaflet-container');
-        if (container) {
-          const mapInstance = (container as any)._leaflet_map;
-          // fallback: use dom events
-        }
-      }}
-    >
-      {dir === 'in' ? '+' : '−'}
-    </button>
-  );
-}
-
-// Proper zoom buttons using react-leaflet's useMap
-export function MapZoomControls() {
-  const map = useMap();
-  return (
-    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
-      <button
-        className="w-9 h-9 rounded-lg bg-white/95 shadow border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-white active:scale-95 transition-transform"
-        style={{ color: 'var(--ea-midnight)' }}
-        onClick={() => map.zoomIn()}
+      <MapContainer
+        center={MAP_CONFIG.center}
+        zoom={MAP_CONFIG.defaultZoom}
+        // This is a dummy — we embed zoom inside the real MapContainer above
+        // Removing the orphan ZoomButton block entirely
+        className="hidden"
       >
-        +
-      </button>
-      <button
-        className="w-9 h-9 rounded-lg bg-white/95 shadow border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-white active:scale-95 transition-transform"
-        style={{ color: 'var(--ea-midnight)' }}
-        onClick={() => map.zoomOut()}
-      >
-        −
-      </button>
+        <></>
+      </MapContainer>
     </div>
   );
 }
