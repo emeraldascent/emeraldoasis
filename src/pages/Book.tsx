@@ -51,7 +51,7 @@ interface BookProps {
 export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const showWelcomeFirst = (location.state as any)?.welcomePass === true;
+  const _welcomeHint = (location.state as any)?.welcomePass;
   const [selectedService, setSelectedService] = useState<ServiceCard | null>(null);
   const isActive = badgeStatus === 'active';
   const hasWelcomePass = member && !member.welcome_pass_redeemed;

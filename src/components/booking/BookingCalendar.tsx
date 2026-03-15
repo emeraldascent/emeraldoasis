@@ -10,12 +10,14 @@ interface ServiceInfo {
   name: string;
   price: string;
   description: string;
+  isFreeWelcome?: boolean;
 }
 
 interface BookingCalendarProps {
   service: ServiceInfo;
   member: Member;
   onBack: () => void;
+  onRefreshMember?: () => void;
 }
 
 type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
