@@ -70,7 +70,7 @@ function AppContent() {
           path="/book"
           element={
             <AuthGuard user={user} loading={loading}>
-              <Book member={member} badgeStatus={badgeStatus} />
+              <Book member={member} badgeStatus={badgeStatus} onRefreshMember={refreshMember} />
               <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }
