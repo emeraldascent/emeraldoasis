@@ -15,6 +15,7 @@ export interface Member {
   pma_agreed_at: string | null;
   source: string;
   welcome_credits_issued: boolean;
+  welcome_pass_redeemed: boolean;
   simplybook_client_id: string | null;
   subscription_tier: 'silver' | 'gold' | null;
   subscription_active: boolean;

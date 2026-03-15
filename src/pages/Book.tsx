@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star, Gift } from 'lucide-react';
 import { BookingCalendar } from '../components/booking/BookingCalendar';
 import { MemberPassSection } from '../components/booking/MemberPassSection';
 import type { Member, BadgeStatus } from '../lib/types';
@@ -12,7 +12,13 @@ interface ServiceCard {
   description: string;
   price: string;
   icon: React.ReactNode;
+  isFreeWelcome?: boolean;
 }
+
+const WELCOME_PASSES: ServiceCard[] = [
+  { id: 18, name: 'Welcome Pass — 2 Hours', description: 'Your free welcome gift!', price: 'FREE', icon: <Gift size={18} />, isFreeWelcome: true },
+  { id: 19, name: 'Welcome Pass — 4 Hours', description: 'Your free welcome gift!', price: 'FREE', icon: <Gift size={18} />, isFreeWelcome: true },
+];
 
 const DAY_PASSES: ServiceCard[] = [
   { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, Zen Lounge & market', price: '$4', icon: <Clock size={18} /> },
@@ -44,8 +50,11 @@ interface BookProps {
 
 export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  void (location.state as any)?.welcomePass; // used for navigation intent
   const [selectedService, setSelectedService] = useState<ServiceCard | null>(null);
   const isActive = badgeStatus === 'active';
+  const hasWelcomePass = member && !member.welcome_pass_redeemed;
 
   if (!member) {
     return (
@@ -109,6 +118,7 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
         service={selectedService}
         member={member}
         onBack={() => setSelectedService(null)}
+        onRefreshMember={onRefreshMember}
       />
     );
   }
@@ -130,6 +140,50 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
             Welcome back, {member.first_name}
           </p>
         </div>
+
+        {/* Free Welcome Pass */}
+        {hasWelcomePass && (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Gift size={16} style={{ color: 'var(--ea-emerald)' }} />
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                🎁 Your Free Welcome Pass
+              </h2>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3 ml-6">
+              Every new member gets one free Oasis Pass — choose 2 or 4 hours
+            </p>
+            <div className="space-y-2">
+              {WELCOME_PASSES.map((service) => (
+                <button
+                  key={`welcome-${service.id}`}
+                  onClick={() => setSelectedService(service)}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border transition-colors hover:border-border/80 text-left"
+                  style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: '#DCFCE7', color: 'var(--ea-emerald)' }}
+                  >
+                    {service.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                      {service.name}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{service.description}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+                      FREE
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Redeem →</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="flex items-center gap-2 mb-1">

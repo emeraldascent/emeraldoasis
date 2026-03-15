@@ -10,12 +10,14 @@ interface ServiceInfo {
   name: string;
   price: string;
   description: string;
+  isFreeWelcome?: boolean;
 }
 
 interface BookingCalendarProps {
   service: ServiceInfo;
   member: Member;
   onBack: () => void;
+  onRefreshMember?: () => void;
 }
 
 type Step = 'date' | 'time' | 'confirm' | 'payment' | 'success';
@@ -47,7 +49,7 @@ async function simplybookCall(body: Record<string, unknown>, maxRetries = 5): Pr
   }
 }
 
-export function BookingCalendar({ service, member, onBack }: BookingCalendarProps) {
+export function BookingCalendar({ service, member, onBack, onRefreshMember }: BookingCalendarProps) {
   const [step, setStep] = useState<Step>('date');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -123,6 +125,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
 
   const isCampsite = CAMPSITE_IDS.includes(service.id);
   const isMemberPass = MEMBER_PASS_IDS.includes(service.id);
+  const isFreeWelcome = !!service.isFreeWelcome;
   const handleDateSelect = (day: number) => {
     const key = getDayKey(day);
     if (key < todayStr) return;
@@ -145,7 +148,7 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
   };
 
   const handleProceedToPayment = () => {
-    if (isMemberPass) {
+    if (isMemberPass || isFreeWelcome) {
       handleFreeBooking();
     } else {
       setStep('payment');
@@ -190,11 +193,21 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
             booking_date: selectedDate,
             booking_time: selectedTime,
             guest_names: guestNames ? [guestNames] : null,
-            is_member_pass: true,
+            is_member_pass: isMemberPass || isFreeWelcome,
             status: 'confirmed',
           });
         } catch (logErr) {
           console.warn('Failed to log booking:', logErr);
+        }
+      }
+
+      // Mark welcome pass as redeemed
+      if (isFreeWelcome) {
+        try {
+          await supabase.from('members').update({ welcome_pass_redeemed: true }).eq('id', member.id);
+          onRefreshMember?.();
+        } catch (err) {
+          console.warn('Failed to mark welcome pass redeemed:', err);
         }
       }
 
@@ -206,8 +219,8 @@ export function BookingCalendar({ service, member, onBack }: BookingCalendarProp
           serviceName: service.name,
           date: selectedDate,
           time: selectedTime,
-          price: 'Included with membership',
-          transactionId: 'MEMBER-PASS',
+          price: isFreeWelcome ? 'Free Welcome Pass' : 'Included with membership',
+          transactionId: isFreeWelcome ? 'WELCOME-PASS' : 'MEMBER-PASS',
           isCampsite,
         },
       }).catch((err) => console.warn('Email send failed:', err));

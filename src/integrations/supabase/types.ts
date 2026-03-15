@@ -390,6 +390,7 @@ export type Database = {
           updated_at: string
           user_id: string
           welcome_credits_issued: boolean
+          welcome_pass_redeemed: boolean
         }
         Insert: {
           authnet_customer_profile_id?: string | null
@@ -418,6 +419,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           welcome_credits_issued?: boolean
+          welcome_pass_redeemed?: boolean
         }
         Update: {
           authnet_customer_profile_id?: string | null
@@ -446,6 +448,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           welcome_credits_issued?: boolean
+          welcome_pass_redeemed?: boolean
         }
         Relationships: []
       }

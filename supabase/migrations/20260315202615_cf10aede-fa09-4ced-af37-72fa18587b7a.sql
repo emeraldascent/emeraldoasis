@@ -1,0 +1,1 @@
+ALTER TABLE public.members ADD COLUMN welcome_pass_redeemed boolean NOT NULL DEFAULT false;
