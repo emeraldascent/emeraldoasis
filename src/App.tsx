@@ -13,6 +13,7 @@ import { Guide } from './pages/Guide';
 import { Map } from './pages/Map';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import { Events } from './pages/Events';
 import { ResetPassword } from './pages/ResetPassword';
 
 function AppContent() {
