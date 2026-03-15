@@ -63,7 +63,7 @@ const AMENITIES: Amenity[] = [
       'Wood-fired community sauna — fits up to 13',
       'Electric cedar sauna — private, 2-person',
       'Cold plunge in Mineral Creek',
-      'Book a private session or drop in during open hours',
+      'Book a session through our events calendar',
     ],
   },
   {
