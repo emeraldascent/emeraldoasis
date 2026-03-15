@@ -74,7 +74,13 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
     body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 2 }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {
+    const code = data.error?.code ? ` (${data.error.code})` : "";
+    const details = data.error?.data
+      ? ` | ${typeof data.error.data === "string" ? data.error.data : JSON.stringify(data.error.data)}`
+      : "";
+    throw new Error(`${data.error.message}${code}${details}`);
+  }
   return data.result;
 }
 
@@ -85,6 +91,124 @@ function addMinutesToDateTime(date: string, time: string, minutes: number) {
   const endDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
   const endTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}`;
   return { endDate, endTime };
+}
+
+function splitNameParts(fullName: string) {
+  const clean = fullName.trim().replace(/\s+/g, " ");
+  if (!clean) return { firstName: "Guest", lastName: "User" };
+  const parts = clean.split(" ");
+  return {
+    firstName: parts[0] || "Guest",
+    lastName: parts.slice(1).join(" ") || "User",
+  };
+}
+
+function normalizeRequiredFields(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v || "").trim()).filter(Boolean);
+  }
+  if (typeof raw === "string") {
+    return raw.split(",").map((v) => v.trim()).filter(Boolean);
+  }
+  if (typeof raw === "object") {
+    return Object.values(raw as Record<string, unknown>)
+      .map((v) => String(v || "").trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function defaultRequiredFieldValue(field: string, base: Record<string, unknown>) {
+  const f = field.toLowerCase();
+  if (f === "country_id" || f.endsWith("_id")) return 1;
+  if (f.includes("email")) return base.email || `guest_${Date.now()}@example.com`;
+  if (f.includes("phone")) return base.phone || "+10000000000";
+  if (f === "name" || f.includes("first_name")) return base.name || "Guest User";
+  if (f === "name2" || f.includes("last_name") || f.includes("surname")) return base.name2 || "User";
+  if (f.includes("zip") || f.includes("postal") || f.includes("postcode")) return base.zip || "00000";
+  if (f.includes("city")) return base.city || "N/A";
+  if (f.includes("address")) return base.address1 || "N/A";
+  return "N/A";
+}
+
+async function resolveClientIdForAdminBooking(adminToken: string, clientData: Record<string, unknown>) {
+  const fullName = String(clientData?.name || "").trim();
+  const safeEmail = String(clientData?.email || "").trim().toLowerCase();
+  const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
+
+  if (safeEmail) {
+    const clientListRaw = await callAdminApi(adminToken, "getClientList", [{ search: safeEmail }]);
+    const clientList: any[] = Array.isArray(clientListRaw) ? clientListRaw : Object.values(clientListRaw || {});
+    const existingClient = clientList.find((c: any) =>
+      String(c?.email || "").trim().toLowerCase() === safeEmail
+    );
+    if (existingClient?.id) {
+      const existingId = Number(existingClient.id);
+      if (!Number.isNaN(existingId)) return existingId;
+    }
+  }
+
+  const { firstName, lastName } = splitNameParts(fullName || "Guest User");
+  const clientPayload: Record<string, unknown> = {
+    name: `${firstName} ${lastName}`.trim(),
+    name2: lastName,
+    email: safeEmail || `guest_${Date.now()}@example.com`,
+    phone: normalizedPhone || "+10000000000",
+    address1: "N/A",
+    address2: "N/A",
+    city: "N/A",
+    zip: "00000",
+    country_id: 1,
+  };
+
+  try {
+    const requiredRaw = await callAdminApi(adminToken, "getCompanyParam", ["require_fields"]);
+    const requiredFields = normalizeRequiredFields(requiredRaw);
+    for (const field of requiredFields) {
+      if (!(field in clientPayload) || clientPayload[field] === "" || clientPayload[field] === null) {
+        clientPayload[field] = defaultRequiredFieldValue(field, clientPayload);
+      }
+    }
+    console.log(`Required client fields: ${requiredFields.join(",") || "none"}`);
+  } catch (err) {
+    console.warn(`Could not load require_fields: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const customClientFields: Record<string, unknown> = {};
+
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      if (Object.keys(customClientFields).length > 0) {
+        clientPayload.client_fields = customClientFields;
+      }
+
+      const clientResult = await callAdminApi(adminToken, "addClient", [clientPayload, false]);
+      const clientId = Number(
+        typeof clientResult === "object" && clientResult !== null
+          ? (clientResult as Record<string, unknown>).id ?? clientResult
+          : clientResult
+      );
+
+      if (!clientId || Number.isNaN(clientId)) {
+        throw new Error("Failed to resolve client ID for admin booking");
+      }
+
+      return clientId;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const customFieldMatch = message.match(/client_fields\/([a-f0-9]+)/i);
+      if (!customFieldMatch) throw err;
+
+      const fieldHash = customFieldMatch[1];
+      if (customClientFields[fieldHash]) throw err;
+
+      customClientFields[fieldHash] = "N/A";
+      console.warn(`Missing required client field ${fieldHash}; retrying addClient (attempt ${attempt})`);
+    }
+  }
+
+  throw new Error("Failed to create or resolve SimplyBook client after required field retries");
 }
 
 serve(async (req) => {
@@ -173,35 +297,11 @@ serve(async (req) => {
 
         const adminToken = await getAdminToken();
 
-        const fullName = String(clientData?.name || "").trim();
-        const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
-        const safeEmail = String(clientData?.email || "").trim();
-        const clientPayload = {
-          name: fullName || "Guest User",
-          email: safeEmail || `guest_${Date.now()}@example.com`,
-          phone: normalizedPhone || "0000000000",
-          address1: "N/A",
-          address2: "N/A",
-          city: "N/A",
-          zip: "00000",
-          country_id: 1,
-        };
-
-        let clientResult: unknown;
+        let clientId: number;
         try {
-          clientResult = await callAdminApi(adminToken, "addClient", [clientPayload]);
+          clientId = await resolveClientIdForAdminBooking(adminToken, clientData || {});
         } catch (addClientErr) {
-          throw new Error(`Admin addClient failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
-        }
-
-        const clientId = Number(
-          typeof clientResult === "object" && clientResult !== null
-            ? (clientResult as Record<string, unknown>).id ?? clientResult
-            : clientResult
-        );
-
-        if (!clientId || Number.isNaN(clientId)) {
-          throw new Error("Failed to resolve client ID for admin booking");
+          throw new Error(`Admin client resolution failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
         }
 
         const events = await callPublicApi(publicToken, "getEventList", []);
