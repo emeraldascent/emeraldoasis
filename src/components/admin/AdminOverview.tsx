@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, LogIn, AlertTriangle } from 'lucide-react';
+import { Users, Calendar, AlertTriangle } from 'lucide-react';
 
 interface Stats {
   todayCheckIns: number;
