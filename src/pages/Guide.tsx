@@ -63,8 +63,7 @@ const AMENITIES: Amenity[] = [
       'Wood-fired community sauna — fits up to 13',
       'Electric cedar sauna — private, 2-person',
       'Cold plunge in Mineral Creek',
-      'Buddy system required — never use alone',
-      'Included with Oasis Pass or camping stay',
+      'Book a private session or drop in during open hours',
     ],
   },
   {
