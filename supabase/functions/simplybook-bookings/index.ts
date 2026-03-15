@@ -269,35 +269,11 @@ serve(async (req) => {
 
         const adminToken = await getAdminToken();
 
-        const fullName = String(clientData?.name || "").trim();
-        const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
-        const safeEmail = String(clientData?.email || "").trim();
-        const clientPayload = {
-          name: fullName || "Guest User",
-          email: safeEmail || `guest_${Date.now()}@example.com`,
-          phone: normalizedPhone || "0000000000",
-          address1: "N/A",
-          address2: "N/A",
-          city: "N/A",
-          zip: "00000",
-          country_id: 1,
-        };
-
-        let clientResult: unknown;
+        let clientId: number;
         try {
-          clientResult = await callAdminApi(adminToken, "addClient", [clientPayload]);
+          clientId = await resolveClientIdForAdminBooking(adminToken, clientData || {});
         } catch (addClientErr) {
-          throw new Error(`Admin addClient failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
-        }
-
-        const clientId = Number(
-          typeof clientResult === "object" && clientResult !== null
-            ? (clientResult as Record<string, unknown>).id ?? clientResult
-            : clientResult
-        );
-
-        if (!clientId || Number.isNaN(clientId)) {
-          throw new Error("Failed to resolve client ID for admin booking");
+          throw new Error(`Admin client resolution failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
         }
 
         const events = await callPublicApi(publicToken, "getEventList", []);
