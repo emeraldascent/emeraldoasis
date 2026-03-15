@@ -43,6 +43,7 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
   const [cvv, setCvv] = useState('');
+  const [zip, setZip] = useState('');
   const [error, setError] = useState('');
   const [tokenizing, setTokenizing] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
