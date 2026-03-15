@@ -219,7 +219,7 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
           serviceName: service.name,
           date: selectedDate,
           time: selectedTime,
-          price: 'Included with membership',
+          price: isFreeWelcome ? 'Free Welcome Pass' : 'Included with membership',
           transactionId: 'MEMBER-PASS',
           isCampsite,
         },
