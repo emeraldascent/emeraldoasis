@@ -49,7 +49,7 @@ async function simplybookCall(body: Record<string, unknown>, maxRetries = 5): Pr
   }
 }
 
-export function BookingCalendar({ service, member, onBack }: BookingCalendarProps) {
+export function BookingCalendar({ service, member, onBack, onRefreshMember }: BookingCalendarProps) {
   const [step, setStep] = useState<Step>('date');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
