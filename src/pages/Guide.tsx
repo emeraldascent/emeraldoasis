@@ -76,7 +76,7 @@ const AMENITIES: Amenity[] = [
     details: [
       'Indoor seating with WiFi & power',
       'Quiet workspace during the day',
-      'Tea, water & light refreshments',
+      'Refreshments available downstairs during market hours',
       'Open to all pass holders & campers',
     ],
   },
