@@ -26,7 +26,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
     ? TIER_ORDER.filter((_, i) => i > currentIndex)
     : TIER_ORDER;
 
-  const activeTier = mode === 'extend' ? member.membership_tier : selectedTier;
+  const activeTier = selectedTier ?? (mode === 'extend' ? member.membership_tier : null);
   const activeConfig = activeTier ? TIER_CONFIG[activeTier] : null;
 
   const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }) => {
@@ -63,7 +63,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   };
 
   const proceedToPay = () => {
-    if (mode === 'extend' || selectedTier) {
+    if (selectedTier) {
       setStep('pay');
     }
   };
