@@ -178,7 +178,6 @@ const RULE_GROUPS: { heading: string; sections: RuleSection[] }[] = [
         icon: <ShieldAlert size={14} />,
         items: [
           'No alcohol, smoking, or vaping on property',
-          'Cannabis from our apothecary is the exception',
         ],
       },
       {
