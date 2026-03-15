@@ -47,7 +47,7 @@ export function AdminOverview() {
         .lte('membership_end', weekStr);
 
       setStats({
-        todayCheckIns: checkInCount ?? 0,
+        todayBookings: bookingCount ?? 0,
         activeMembers: activeCount ?? 0,
         expiringThisWeek: expiringCount ?? 0,
       });
