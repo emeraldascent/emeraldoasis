@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMember } from '@/hooks/useMember';
-import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -22,10 +22,20 @@ interface EventTicket {
   status: string;
 }
 
+interface MemberBooking {
+  id: string;
+  booking_date: string;
+  service_name: string;
+  booking_time: string | null;
+  status: string;
+}
+
 export function Events() {
   const { member } = useMember();
   const [events, setEvents] = useState<Event[]>([]);
   const [myTickets, setMyTickets] = useState<EventTicket[]>([]);
+  const [myBookings, setMyBookings] = useState<MemberBooking[]>([]);
+  const [showBookings, setShowBookings] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -33,7 +43,10 @@ export function Events() {
 
   useEffect(() => {
     fetchEvents();
-    if (member) fetchMyTickets();
+    if (member) {
+      fetchMyTickets();
+      fetchMyBookings();
+    }
   }, [member]);
 
   const fetchEvents = async () => {
@@ -55,6 +68,18 @@ export function Events() {
       .select('*')
       .eq('member_id', member.id);
     setMyTickets((data as EventTicket[]) || []);
+  };
+
+  const fetchMyBookings = async () => {
+    if (!member) return;
+    const { data } = await supabase
+      .from('member_bookings')
+      .select('*')
+      .eq('member_id', member.id)
+      .eq('status', 'confirmed')
+      .gte('booking_date', new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0])
+      .order('booking_date', { ascending: true });
+    setMyBookings((data as MemberBooking[]) || []);
   };
 
   const purchaseTicket = async (event: Event) => {
@@ -97,6 +122,12 @@ export function Events() {
     eventsByDate[e.event_date].push(e);
   });
 
+  const bookingsByDate: Record<string, MemberBooking[]> = {};
+  myBookings.forEach((b) => {
+    if (!bookingsByDate[b.booking_date]) bookingsByDate[b.booking_date] = [];
+    bookingsByDate[b.booking_date].push(b);
+  });
+
   const ticketedEventIds = new Set(myTickets.map((t) => t.event_id));
 
   const calDays: { day: number; dateStr: string }[] = [];
@@ -108,6 +139,11 @@ export function Events() {
   const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
   const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Selected date detail
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const selectedDateEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
+  const selectedDateBookings = selectedDate && showBookings ? bookingsByDate[selectedDate] || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -147,50 +183,137 @@ export function Events() {
             ))}
             {calDays.map(({ day, dateStr }) => {
               const dayEvents = eventsByDate[dateStr] || [];
+              const dayBookings = showBookings ? (bookingsByDate[dateStr] || []) : [];
               const isToday = dateStr === todayStr;
               const hasEvents = dayEvents.length > 0;
+              const hasBookings = dayBookings.length > 0;
               const hasMyTicket = dayEvents.some((e) => ticketedEventIds.has(e.id));
+              const isSelected = selectedDate === dateStr;
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => {
-                    if (hasEvents) setSelectedEvent(dayEvents[0]);
+                    if (hasEvents) {
+                      setSelectedDate(dateStr);
+                      setSelectedEvent(dayEvents[0]);
+                    } else if (hasBookings) {
+                      setSelectedDate(dateStr);
+                    }
                   }}
                   className="relative aspect-square flex items-center justify-center rounded-lg text-xs transition-colors"
                   style={{
-                    backgroundColor: hasMyTicket
-                      ? '#DCFCE7'
+                    backgroundColor: isSelected
+                      ? 'var(--ea-emerald)'
+                      : hasMyTicket
+                        ? '#DCFCE7'
+                        : hasEvents
+                          ? '#FEF3C7'
+                          : isToday
+                            ? '#F3F4F6'
+                            : 'transparent',
+                    color: isSelected
+                      ? 'white'
                       : hasEvents
-                        ? '#FEF3C7'
+                        ? 'var(--ea-midnight)'
                         : isToday
-                          ? '#F3F4F6'
-                          : 'transparent',
-                    color: hasEvents ? 'var(--ea-midnight)' : isToday ? 'var(--ea-emerald)' : '#6B7280',
-                    fontWeight: hasEvents || isToday ? 600 : 400,
+                          ? 'var(--ea-emerald)'
+                          : '#6B7280',
+                    fontWeight: hasEvents || isToday || isSelected ? 600 : 400,
                   }}
                 >
                   {day}
-                  {hasEvents && (
-                    <span
-                      className="absolute bottom-0.5 w-1 h-1 rounded-full"
-                      style={{ backgroundColor: hasMyTicket ? '#16a34a' : '#d97706' }}
-                    />
-                  )}
+                  {/* Dots row */}
+                  <span className="absolute bottom-0.5 flex gap-0.5 justify-center">
+                    {hasEvents && (
+                      <span
+                        className="w-1 h-1 rounded-full"
+                        style={{ backgroundColor: isSelected ? 'white' : hasMyTicket ? '#16a34a' : '#d97706' }}
+                      />
+                    )}
+                    {hasBookings && (
+                      <span
+                        className="w-1 h-1 rounded-full"
+                        style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.7)' : '#2563eb' }}
+                      />
+                    )}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-4 mt-3 px-1">
-            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
-            </span>
-            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
-            </span>
+          {/* Legend + bookings toggle */}
+          <div className="flex items-center justify-between mt-3 px-1">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
+              </span>
+              {showBookings && (
+                <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2563eb' }} /> Booking
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowBookings(!showBookings)}
+              className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full transition-colors"
+              style={{
+                backgroundColor: showBookings ? '#EFF6FF' : '#F3F4F6',
+                color: showBookings ? '#2563eb' : '#9CA3AF',
+              }}
+            >
+              {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
+              Bookings
+            </button>
           </div>
         </div>
+
+        {/* Selected date detail */}
+        {selectedDate && (selectedDateEvents.length > 0 || selectedDateBookings.length > 0) && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <button onClick={() => setSelectedDate(null)} className="text-[10px] text-gray-400">✕</button>
+            </div>
+
+            {selectedDateEvents.map((event) => (
+              <button
+                key={event.id}
+                onClick={() => setSelectedEvent(event)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left"
+                style={{ backgroundColor: '#FEF3C7' }}
+              >
+                <span className="text-[10px] font-bold" style={{ color: '#92400e' }}>EVENT</span>
+                <span className="text-xs font-medium flex-1 truncate" style={{ color: 'var(--ea-midnight)' }}>
+                  {event.title}
+                </span>
+                <span className="text-[10px] text-gray-500">{formatTime(event.start_time)}</span>
+              </button>
+            ))}
+
+            {selectedDateBookings.map((booking) => (
+              <div
+                key={booking.id}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                style={{ backgroundColor: '#EFF6FF' }}
+              >
+                <span className="text-[10px] font-bold" style={{ color: '#2563eb' }}>BOOKING</span>
+                <span className="text-xs font-medium flex-1 truncate" style={{ color: 'var(--ea-midnight)' }}>
+                  {booking.service_name}
+                </span>
+                {booking.booking_time && (
+                  <span className="text-[10px] text-gray-500">{formatTime(booking.booking_time)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Event Detail Modal */}
         {selectedEvent && (
