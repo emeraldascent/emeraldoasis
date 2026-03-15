@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUp, Check, X } from 'lucide-react';
+import { ArrowUp, Check, X, CreditCard, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member, MembershipTier } from '@/lib/types';
 import { TIER_CONFIG } from '@/lib/types';
@@ -29,13 +29,18 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   const activeTier = selectedTier ?? (mode === 'extend' ? member.membership_tier : null);
   const activeConfig = activeTier ? TIER_CONFIG[activeTier] : null;
 
-  const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }) => {
+  const savedLast4 = (member as any).saved_card_last4 as string | null;
+
+  const processPayment = async (
+    opaqueData: { dataDescriptor: string; dataValue: string } | null,
+    useSavedCard: boolean,
+    saveCard: boolean
+  ) => {
     if (!activeTier || !activeConfig) return;
     setProcessing(true);
     setError('');
 
     try {
-      // Call edge function to process payment + update membership
       const { data, error: fnError } = await supabase.functions.invoke('upgrade-membership', {
         body: {
           opaqueData,
@@ -44,11 +49,30 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
           email: member.email,
           memberName: `${member.first_name} ${member.last_name}`,
           mode,
+          useSavedCard,
         },
       });
 
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
+
+      // If user opted to save card and we have opaque data, save the profile
+      if (saveCard && opaqueData && !useSavedCard) {
+        try {
+          await supabase.functions.invoke('manage-payment-profile', {
+            body: {
+              action: 'save',
+              memberId: member.id,
+              opaqueData,
+              email: member.email,
+              memberName: `${member.first_name} ${member.last_name}`,
+            },
+          });
+        } catch (saveErr) {
+          console.error('Failed to save card:', saveErr);
+          // Don't block the success flow
+        }
+      }
 
       setDone(true);
       setTimeout(() => {
@@ -60,6 +84,14 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = async (opaqueData: { dataDescriptor: string; dataValue: string }, saveCard?: boolean) => {
+    await processPayment(opaqueData, false, saveCard || false);
+  };
+
+  const handleUseSavedCard = async () => {
+    await processPayment(null, true, false);
   };
 
   const proceedToPay = () => {
@@ -114,6 +146,9 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
               amount={`$${activeConfig.price}`}
               onPaymentSuccess={handlePaymentSuccess}
               loading={processing}
+              showSaveOption={true}
+              savedCardLast4={savedLast4}
+              onUseSavedCard={handleUseSavedCard}
             />
 
             <button
