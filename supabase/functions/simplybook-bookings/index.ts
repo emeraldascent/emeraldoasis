@@ -108,9 +108,9 @@ serve(async (req) => {
       });
     }
 
-    // Booking uses public API token (client login disabled in SimplyBook)
+    // Booking uses admin API token for write access
     if (action === "book") {
-      const token = await getPublicToken();
+      const adminToken = await getAdminToken();
       const { eventId, unitId, date, time, clientData, additionalFields, count } = body;
 
       // Event-to-Unit mapping based on SimplyBook configuration
@@ -123,8 +123,9 @@ serve(async (req) => {
       const resolvedUnitId = unitId || EVENT_UNIT_MAP[eventId] || 22;
 
       // SimplyBook expects additional fields keyed by field hash name, not numeric ID
-      // Fetch field definitions to map id → hash name
-      const fieldDefs = await callPublicApi(token, "getAdditionalFields", [eventId]);
+      // Fetch field definitions to map id → hash name (use public token for read)
+      const publicToken = await getPublicToken();
+      const fieldDefs = await callPublicApi(publicToken, "getAdditionalFields", [eventId]);
       const fieldList: any[] = Array.isArray(fieldDefs) ? fieldDefs : Object.values(fieldDefs);
       const idToName: Record<string, string> = {};
       for (const f of fieldList) {
@@ -140,7 +141,6 @@ serve(async (req) => {
           }
         }
       } else if (additionalFields && typeof additionalFields === "object") {
-        // If already keyed by name/id, try to remap
         for (const [k, v] of Object.entries(additionalFields)) {
           const key = idToName[k] || k;
           additionalObj[key] = v;
@@ -149,7 +149,7 @@ serve(async (req) => {
 
       console.log(`Booking: event=${eventId}, unit=${resolvedUnitId}, additional=${JSON.stringify(additionalObj)}`);
 
-      const result = await callPublicApi(token, "book", [
+      const result = await callAdminApi(adminToken, "book", [
         eventId, resolvedUnitId, date, time, clientData, additionalObj, count || 1,
       ]);
       return new Response(JSON.stringify(result), {
