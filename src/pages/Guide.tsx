@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2,
   ShieldAlert, Phone, Map, ChevronDown, ChevronRight,
-  Sun, Tent, Sparkles, Store, Sofa, CircleDot,
+  Sun, Tent, Store, Sofa, CircleDot,
 } from 'lucide-react';
 import * as Collapsible from '@radix-ui/react-collapsible';
 
