@@ -117,7 +117,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // 3. Best-effort: sync to SimplyBook (will work once Memberships plugin is activated)
+    // 3. Best-effort: sync membership to SimplyBook
     try {
       const sbApiKey = Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY");
       if (sbApiKey) {
@@ -128,11 +128,7 @@ serve(async (req: Request) => {
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "getUserToken",
-            params: [
-              "emeraldoasiscamp",
-              "admin",
-              Deno.env.get("SIMPLYBOOK_ADMIN_API_KEY")!,
-            ],
+            params: ["emeraldoasiscamp", "admin", sbApiKey],
             id: 1,
           }),
         });
@@ -140,23 +136,92 @@ serve(async (req: Request) => {
         const token = loginData.result;
 
         if (token) {
-          // Try to get client and issue membership
-          const clientRes = await fetch("https://user-api.simplybook.me/admin/", {
+          const sbHeaders = {
+            "Content-Type": "application/json",
+            "X-Company-Login": "emeraldoasiscamp",
+            "X-User-Token": token,
+          };
+          const sbUrl = "https://user-api.simplybook.me/admin/";
+
+          // Find or create client by email
+          const searchRes = await fetch(sbUrl, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Company-Login": "emeraldoasiscamp",
-              "X-User-Token": token,
-            },
+            headers: sbHeaders,
             body: JSON.stringify({
               jsonrpc: "2.0",
-              method: "isPluginActivated",
-              params: ["membership"],
+              method: "getClientList",
+              params: [{ search: email }],
               id: 2,
             }),
           });
-          const pluginResult = await clientRes.json();
-          console.log("Membership plugin status:", pluginResult.result);
+          const searchData = await searchRes.json();
+          let clientId: string | null = null;
+
+          if (searchData.result?.length > 0) {
+            clientId = searchData.result[0].id;
+          } else {
+            // Create client
+            const nameParts = (memberName || "").split(" ");
+            const createRes = await fetch(sbUrl, {
+              method: "POST",
+              headers: sbHeaders,
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                method: "addClient",
+                params: [{
+                  name: nameParts[0] || "",
+                  name2: nameParts.slice(1).join(" ") || "",
+                  email: email || "",
+                }],
+                id: 3,
+              }),
+            });
+            const createData = await createRes.json();
+            clientId = createData.result;
+          }
+
+          if (clientId) {
+            // Update simplybook_client_id in our DB
+            await supabase.from("members").update({ simplybook_client_id: clientId }).eq("id", memberId);
+
+            // Get available memberships to find the right one
+            const membershipsRes = await fetch(sbUrl, {
+              method: "POST",
+              headers: sbHeaders,
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                method: "getMembershipList",
+                params: [],
+                id: 4,
+              }),
+            });
+            const membershipsData = await membershipsRes.json();
+            console.log("SimplyBook memberships:", JSON.stringify(membershipsData.result));
+
+            // Find membership matching tier name (Silver/Gold)
+            const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+            const membership = (membershipsData.result || []).find(
+              (m: any) => m.name?.toLowerCase().includes(tier) || m.name?.includes(tierName)
+            );
+
+            if (membership) {
+              // Issue membership to client
+              const issueRes = await fetch(sbUrl, {
+                method: "POST",
+                headers: sbHeaders,
+                body: JSON.stringify({
+                  jsonrpc: "2.0",
+                  method: "issueClientMembership",
+                  params: [clientId, membership.id],
+                  id: 5,
+                }),
+              });
+              const issueData = await issueRes.json();
+              console.log("SimplyBook membership issued:", JSON.stringify(issueData));
+            } else {
+              console.warn(`No SimplyBook membership found matching tier "${tier}"`);
+            }
+          }
         }
       }
     } catch (sbErr) {
