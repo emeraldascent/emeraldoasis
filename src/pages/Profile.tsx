@@ -132,21 +132,44 @@ export function Profile({ member, onLogout, onRefresh }: ProfileProps) {
           </div>
         </div>
 
-        {/* Membership info */}
-        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--ea-birch)' }}>
+        {/* Membership info — tappable to upgrade */}
+        <button
+          onClick={() => member.membership_tier !== 'annual' && setShowUpgrade(true)}
+          className="w-full p-4 rounded-xl text-left transition-colors"
+          style={{ backgroundColor: 'var(--ea-birch)' }}
+        >
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-semibold" style={{ color: 'var(--ea-midnight)' }}>
               {tier.emoji} {tier.label} Membership
             </span>
-            <span
-              className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-              style={{ backgroundColor: member.membership_tier === 'annual' ? 'var(--ea-gold)' : 'var(--ea-emerald)' }}
-            >
-              ${tier.price}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                style={{ backgroundColor: member.membership_tier === 'annual' ? 'var(--ea-gold)' : 'var(--ea-emerald)' }}
+              >
+                ${tier.price}
+              </span>
+              {member.membership_tier !== 'annual' && (
+                <ArrowUp size={13} style={{ color: 'var(--ea-emerald)' }} />
+              )}
+            </div>
           </div>
           <p className="text-[11px] text-gray-500">Valid through {endDate}</p>
-        </div>
+          {member.membership_tier !== 'annual' && (
+            <p className="text-[10px] mt-1" style={{ color: 'var(--ea-emerald)' }}>
+              Tap to upgrade →
+            </p>
+          )}
+        </button>
+
+        {showUpgrade && (
+          <MembershipUpgrade
+            member={member}
+            mode="upgrade"
+            onComplete={onRefresh}
+            onClose={() => setShowUpgrade(false)}
+          />
+        )}
 
         <Separator />
 
