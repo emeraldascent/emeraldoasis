@@ -78,6 +78,15 @@ async function callAdminApi(token: string, method: string, params: unknown[]) {
   return data.result;
 }
 
+function addMinutesToDateTime(date: string, time: string, minutes: number) {
+  const [h, m, s] = time.split(":").map((x) => Number(x || 0));
+  const dt = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+  dt.setMinutes(dt.getMinutes() + minutes);
+  const endDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  const endTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}`;
+  return { endDate, endTime };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
