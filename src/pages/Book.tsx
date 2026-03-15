@@ -15,10 +15,10 @@ interface ServiceCard {
 }
 
 const DAY_PASSES: ServiceCard[] = [
-  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, market access', price: '$4', icon: <Clock size={18} /> },
-  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit with full property access', price: '$8', icon: <Sun size={18} /> },
-  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day experience', price: '$12', icon: <Sun size={18} /> },
-  { id: 23, name: 'Oasis Pass — 8 Hours', description: 'Dawn-to-dusk immersion', price: '$16', icon: <Sun size={18} /> },
+  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, Zen Lounge & market', price: '$4', icon: <Clock size={18} /> },
+  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit · full property & lounge access', price: '$8', icon: <Sun size={18} /> },
+  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day · coworking, lounge & all amenities', price: '$12', icon: <Sun size={18} /> },
+  { id: 23, name: 'Oasis Pass — 8 Hours', description: 'Dawn-to-dusk · complete Oasis immersion', price: '$16', icon: <Sun size={18} /> },
 ];
 
 const MEMBER_PASSES: ServiceCard[] = [
