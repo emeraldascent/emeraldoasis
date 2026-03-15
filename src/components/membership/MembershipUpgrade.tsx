@@ -29,7 +29,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   const activeTier = selectedTier ?? (mode === 'extend' ? member.membership_tier : null);
   const activeConfig = activeTier ? TIER_CONFIG[activeTier] : null;
 
-  const savedLast4 = (member as any).saved_card_last4 as string | null;
+  const savedLast4 = member.saved_card_last4;
 
   const processPayment = async (
     opaqueData: { dataDescriptor: string; dataValue: string } | null,
