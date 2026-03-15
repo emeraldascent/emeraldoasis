@@ -85,8 +85,12 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
 
     window.Accept.dispatchData(secureData, (response: AuthNetResponse) => {
       setTokenizing(false);
+      console.log('Accept.js response:', JSON.stringify(response));
       if (response.messages.resultCode === 'Error') {
-        setError(response.messages.message[0]?.text || 'Card validation failed.');
+        const errCode = response.messages.message[0]?.code || 'unknown';
+        const errText = response.messages.message[0]?.text || 'Card validation failed.';
+        console.error(`Accept.js error [${errCode}]: ${errText}`);
+        setError(`${errText} (Code: ${errCode})`);
         return;
       }
       if (response.opaqueData) {
