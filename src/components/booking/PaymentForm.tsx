@@ -8,7 +8,7 @@ declare global {
       dispatchData: (
         secureData: {
           authData: { clientKey: string; apiLoginID: string };
-          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
+          cardData: { cardNumber: string; month: string; year: string; cardCode: string; zip?: string };
         },
         responseHandler: (response: AuthNetResponse) => void
       ) => void;
