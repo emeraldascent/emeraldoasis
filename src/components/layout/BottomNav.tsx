@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, CalendarDays, TreePine, User, PenLine, Shield } from 'lucide-react';
+import { Home, CalendarDays, TreePine, User, PenLine, Shield, PartyPopper } from 'lucide-react';
 
 interface BottomNavProps {
   isAuthenticated: boolean;
@@ -9,6 +9,7 @@ interface BottomNavProps {
 const authNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
+  { path: '/events', label: 'Events', icon: PartyPopper },
   { path: '/guide', label: 'Guide', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },
 ];
@@ -16,6 +17,7 @@ const authNav = [
 const adminNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
+  { path: '/events', label: 'Events', icon: PartyPopper },
   { path: '/admin', label: 'Admin', icon: Shield },
   { path: '/guide', label: 'Guide', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },

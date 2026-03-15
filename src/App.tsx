@@ -13,6 +13,7 @@ import { Guide } from './pages/Guide';
 import { Map } from './pages/Map';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import { Events } from './pages/Events';
 import { ResetPassword } from './pages/ResetPassword';
 
 function AppContent() {
@@ -71,6 +72,15 @@ function AppContent() {
           element={
             <AuthGuard user={user} loading={loading}>
               <Book member={member} badgeStatus={badgeStatus} onRefreshMember={refreshMember} />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <Events />
               <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
             </AuthGuard>
           }

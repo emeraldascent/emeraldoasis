@@ -3,8 +3,9 @@ import { GateCheck } from '../components/admin/GateCheck';
 import { MemberRoster } from '../components/admin/MemberRoster';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminCalendar } from '../components/admin/AdminCalendar';
+import { AdminEvents } from '../components/admin/AdminEvents';
 import { MapCalibrator } from '../components/admin/MapCalibrator';
-import { Search, Users, BarChart3, Calendar, MapPin } from 'lucide-react';
+import { Search, Users, BarChart3, Calendar, MapPin, PartyPopper } from 'lucide-react';
 
 export function Admin() {
   return (
@@ -18,14 +19,18 @@ export function Admin() {
         </h1>
 
         <Tabs defaultValue="gate" className="w-full">
-          <TabsList className="w-full grid grid-cols-5 mb-4">
+          <TabsList className="w-full grid grid-cols-6 mb-4">
             <TabsTrigger value="gate" className="text-xs gap-1">
               <Search size={14} />
               Gate
             </TabsTrigger>
             <TabsTrigger value="calendar" className="text-xs gap-1">
               <Calendar size={14} />
-              Calendar
+              Cal
+            </TabsTrigger>
+            <TabsTrigger value="events" className="text-xs gap-1">
+              <PartyPopper size={14} />
+              Events
             </TabsTrigger>
             <TabsTrigger value="roster" className="text-xs gap-1">
               <Users size={14} />
@@ -47,6 +52,10 @@ export function Admin() {
 
           <TabsContent value="calendar">
             <AdminCalendar />
+          </TabsContent>
+
+          <TabsContent value="events">
+            <AdminEvents />
           </TabsContent>
 
           <TabsContent value="roster">

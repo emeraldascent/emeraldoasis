@@ -94,6 +94,105 @@ export type Database = {
           },
         ]
       }
+      event_tickets: {
+        Row: {
+          checked_in: boolean
+          checked_in_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          member_id: string
+          quantity: number
+          status: string
+        }
+        Insert: {
+          checked_in?: boolean
+          checked_in_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          member_id: string
+          quantity?: number
+          status?: string
+        }
+        Update: {
+          checked_in?: boolean
+          checked_in_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          member_id?: string
+          quantity?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tickets_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          capacity: number
+          created_at: string
+          created_by: string | null
+          description: string
+          end_time: string | null
+          event_date: string
+          id: string
+          image_url: string | null
+          is_published: boolean
+          location: string | null
+          price: number
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_time?: string | null
+          event_date: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          location?: string | null
+          price?: number
+          start_time?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_time?: string | null
+          event_date?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          location?: string | null
+          price?: number
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       experiences: {
         Row: {
           capacity: number
