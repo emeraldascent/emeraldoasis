@@ -8,7 +8,7 @@ declare global {
       dispatchData: (
         secureData: {
           authData: { clientKey: string; apiLoginID: string };
-          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
+          cardData: { cardNumber: string; month: string; year: string; cardCode: string; zip?: string };
         },
         responseHandler: (response: AuthNetResponse) => void
       ) => void;
@@ -43,6 +43,7 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
   const [cvv, setCvv] = useState('');
+  const [zip, setZip] = useState('');
   const [error, setError] = useState('');
   const [tokenizing, setTokenizing] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
@@ -50,8 +51,8 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
   const handleSubmit = () => {
     setError('');
 
-    if (!cardNumber || !expMonth || !expYear || !cvv) {
-      setError('Please fill in all card fields.');
+    if (!cardNumber || !expMonth || !expYear || !cvv || !zip) {
+      setError('Please fill in all fields.');
       return;
     }
 
@@ -62,6 +63,12 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
 
     setTokenizing(true);
 
+    // Accept.js expects 2-digit year
+    let twoDigitYear = expYear.replace(/\D/g, '');
+    if (twoDigitYear.length === 4) {
+      twoDigitYear = twoDigitYear.slice(2);
+    }
+
     const secureData = {
       authData: {
         clientKey: AUTHNET_CLIENT_KEY,
@@ -70,8 +77,9 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
       cardData: {
         cardNumber: cardNumber.replace(/\s/g, ''),
         month: expMonth.padStart(2, '0'),
-        year: expYear.length === 2 ? '20' + expYear : expYear,
+        year: twoDigitYear,
         cardCode: cvv,
+        zip: zip,
       },
     };
 
@@ -150,10 +158,10 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
               type="text"
               inputMode="numeric"
               value={expYear}
-              onChange={(e) => setExpYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="YYYY"
+              onChange={(e) => setExpYear(e.target.value.replace(/\D/g, '').slice(0, 2))}
+              placeholder="YY"
               className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-emerald-400"
-              maxLength={4}
+              maxLength={2}
               disabled={isProcessing}
             />
           </div>
@@ -170,6 +178,21 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
               disabled={isProcessing}
             />
           </div>
+        </div>
+
+        {/* Zip Code */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-gray-500 font-medium">Billing Zip Code</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={zip}
+            onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
+            placeholder="12345"
+            className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-emerald-400"
+            maxLength={5}
+            disabled={isProcessing}
+          />
         </div>
       </div>
 
