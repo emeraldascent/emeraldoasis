@@ -87,6 +87,102 @@ function addMinutesToDateTime(date: string, time: string, minutes: number) {
   return { endDate, endTime };
 }
 
+function splitNameParts(fullName: string) {
+  const clean = fullName.trim().replace(/\s+/g, " ");
+  if (!clean) return { firstName: "Guest", lastName: "User" };
+  const parts = clean.split(" ");
+  return {
+    firstName: parts[0] || "Guest",
+    lastName: parts.slice(1).join(" ") || "User",
+  };
+}
+
+function normalizeRequiredFields(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v || "").trim()).filter(Boolean);
+  }
+  if (typeof raw === "string") {
+    return raw.split(",").map((v) => v.trim()).filter(Boolean);
+  }
+  if (typeof raw === "object") {
+    return Object.values(raw as Record<string, unknown>)
+      .map((v) => String(v || "").trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function defaultRequiredFieldValue(field: string, base: Record<string, unknown>) {
+  const f = field.toLowerCase();
+  if (f === "country_id" || f.endsWith("_id")) return 1;
+  if (f.includes("email")) return base.email || `guest_${Date.now()}@example.com`;
+  if (f.includes("phone")) return base.phone || "+10000000000";
+  if (f === "name" || f.includes("first_name")) return base.name || "Guest User";
+  if (f === "name2" || f.includes("last_name") || f.includes("surname")) return base.name2 || "User";
+  if (f.includes("zip") || f.includes("postal") || f.includes("postcode")) return base.zip || "00000";
+  if (f.includes("city")) return base.city || "N/A";
+  if (f.includes("address")) return base.address1 || "N/A";
+  return "N/A";
+}
+
+async function resolveClientIdForAdminBooking(adminToken: string, clientData: Record<string, unknown>) {
+  const fullName = String(clientData?.name || "").trim();
+  const safeEmail = String(clientData?.email || "").trim().toLowerCase();
+  const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
+
+  if (safeEmail) {
+    const clientListRaw = await callAdminApi(adminToken, "getClientList", [{ search: safeEmail }]);
+    const clientList: any[] = Array.isArray(clientListRaw) ? clientListRaw : Object.values(clientListRaw || {});
+    const existingClient = clientList.find((c: any) =>
+      String(c?.email || "").trim().toLowerCase() === safeEmail
+    );
+    if (existingClient?.id) {
+      const existingId = Number(existingClient.id);
+      if (!Number.isNaN(existingId)) return existingId;
+    }
+  }
+
+  const { firstName, lastName } = splitNameParts(fullName || "Guest User");
+  const clientPayload: Record<string, unknown> = {
+    name: `${firstName} ${lastName}`.trim(),
+    name2: lastName,
+    email: safeEmail || `guest_${Date.now()}@example.com`,
+    phone: normalizedPhone || "+10000000000",
+    address1: "N/A",
+    address2: "N/A",
+    city: "N/A",
+    zip: "00000",
+    country_id: 1,
+  };
+
+  try {
+    const requiredRaw = await callAdminApi(adminToken, "getCompanyParam", ["require_fields"]);
+    const requiredFields = normalizeRequiredFields(requiredRaw);
+    for (const field of requiredFields) {
+      if (!(field in clientPayload) || clientPayload[field] === "" || clientPayload[field] === null) {
+        clientPayload[field] = defaultRequiredFieldValue(field, clientPayload);
+      }
+    }
+    console.log(`Required client fields: ${requiredFields.join(",") || "none"}`);
+  } catch (err) {
+    console.warn(`Could not load require_fields: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const clientResult = await callAdminApi(adminToken, "addClient", [clientPayload, false]);
+  const clientId = Number(
+    typeof clientResult === "object" && clientResult !== null
+      ? (clientResult as Record<string, unknown>).id ?? clientResult
+      : clientResult
+  );
+
+  if (!clientId || Number.isNaN(clientId)) {
+    throw new Error("Failed to resolve client ID for admin booking");
+  }
+
+  return clientId;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
