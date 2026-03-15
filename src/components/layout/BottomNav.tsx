@@ -27,7 +27,7 @@ const publicNav = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/join', label: 'Join', icon: PenLine },
   { path: '/book', label: 'Book', icon: CalendarDays },
-  { path: '/guide', label: 'Guide', icon: TreePine },
+  { path: '/guide', label: 'Explore', icon: TreePine },
 ];
 
 export function BottomNav({ isAuthenticated, isAdmin }: BottomNavProps) {
