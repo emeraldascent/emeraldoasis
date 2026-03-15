@@ -148,7 +148,7 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
   };
 
   const handleProceedToPayment = () => {
-    if (isMemberPass) {
+    if (isMemberPass || isFreeWelcome) {
       handleFreeBooking();
     } else {
       setStep('payment');
