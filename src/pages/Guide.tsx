@@ -1,4 +1,4 @@
-import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone, Map } from 'lucide-react';
+import { MapPin, Clock, Car, Droplets, Flame, Volume2, Dog, Trash2, ShieldAlert, Phone, Map, Sparkles, CalendarCheck, Users, Tent, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface GuideSection {
@@ -199,6 +199,37 @@ export function Guide() {
           </div>
           <span className="ml-auto text-gray-300">→</span>
         </button>
+
+        {/* How It Works */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div style={{ color: 'var(--ea-emerald)' }}><Sparkles size={16} /></div>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+              How It Works
+            </h2>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed mb-3">
+            Now that you've signed the PMA and become a member, here's what's available to you:
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2.5">
+              <CalendarCheck size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--ea-emerald)' }} />
+              <p className="text-xs text-gray-600"><strong>Book an Oasis Pass</strong> — Day access with spring water, trails, Zen Lounge, and market</p>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Star size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--ea-emerald)' }} />
+              <p className="text-xs text-gray-600"><strong>Upgrade to Silver or Gold</strong> — Get included passes each month and member perks</p>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Tent size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--ea-emerald)' }} />
+              <p className="text-xs text-gray-600"><strong>Reserve a Campsite</strong> — Primitive creekside or wooded sites with fire rings</p>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Users size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--ea-emerald)' }} />
+              <p className="text-xs text-gray-600"><strong>Invite Guests</strong> — All guests must sign the PMA before arriving</p>
+            </div>
+          </div>
+        </div>
 
         {/* PMA Reminder */}
         <div

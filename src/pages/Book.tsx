@@ -15,10 +15,10 @@ interface ServiceCard {
 }
 
 const DAY_PASSES: ServiceCard[] = [
-  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, market access', price: '$4', icon: <Clock size={18} /> },
-  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit with full property access', price: '$8', icon: <Sun size={18} /> },
-  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day experience', price: '$12', icon: <Sun size={18} /> },
-  { id: 23, name: 'Oasis Pass — 8 Hours', description: 'Dawn-to-dusk immersion', price: '$16', icon: <Sun size={18} /> },
+  { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, Zen Lounge & market', price: '$4', icon: <Clock size={18} /> },
+  { id: 19, name: 'Oasis Pass — 4 Hours', description: 'Extended visit · full property & lounge access', price: '$8', icon: <Sun size={18} /> },
+  { id: 22, name: 'Oasis Pass — 6 Hours', description: 'Full day · coworking, lounge & all amenities', price: '$12', icon: <Sun size={18} /> },
+  { id: 23, name: 'Oasis Pass — 8 Hours', description: 'Dawn-to-dusk · complete Oasis immersion', price: '$16', icon: <Sun size={18} /> },
 ];
 
 const MEMBER_PASSES: ServiceCard[] = [
@@ -131,12 +131,45 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
           </p>
         </div>
 
-        <ServiceSection
-          title="Day Passes"
-          icon={<Sun size={16} style={{ color: 'var(--ea-emerald)' }} />}
-          services={DAY_PASSES}
-          onSelect={setSelectedService}
-        />
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Sun size={16} style={{ color: 'var(--ea-emerald)' }} />
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+              Day Passes
+            </h2>
+          </div>
+          <p className="text-[11px] text-gray-400 mb-3 ml-6">
+            Includes Zen Lounge with WiFi & coworking, spring water, trails & market
+          </p>
+          <div className="space-y-2">
+            {DAY_PASSES.map((service) => (
+              <button
+                key={service.id}
+                onClick={() => setSelectedService(service)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+                >
+                  {service.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                    {service.name}
+                  </p>
+                  <p className="text-[11px] text-gray-400">{service.description}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+                    {service.price}
+                  </p>
+                  <p className="text-[10px] text-gray-400">Book →</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <MemberPassSection
           services={MEMBER_PASSES}
