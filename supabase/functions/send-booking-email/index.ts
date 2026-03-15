@@ -1,11 +1,103 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+/**
+ * Minimal SMTP client using raw Deno.connect / Deno.connectTls
+ * that does NOT rely on the removed Deno.writeAll / Deno.readAll APIs.
+ */
+async function sendEmailViaSmtp(opts: {
+  hostname: string;
+  port: number;
+  username: string;
+  password: string;
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  // Connect with TLS (port 465)
+  const conn = await Deno.connectTls({ hostname: opts.hostname, port: opts.port });
+
+  async function read(): Promise<string> {
+    const buf = new Uint8Array(4096);
+    const n = await conn.read(buf);
+    return n ? decoder.decode(buf.subarray(0, n)) : "";
+  }
+
+  async function write(cmd: string) {
+    const data = encoder.encode(cmd + "\r\n");
+    await conn.write(data);
+  }
+
+  async function cmd(command: string, expectedCode: string) {
+    await write(command);
+    const resp = await read();
+    if (!resp.startsWith(expectedCode)) {
+      throw new Error(`SMTP error on "${command.substring(0, 30)}": ${resp.trim()}`);
+    }
+    return resp;
+  }
+
+  // Read greeting
+  await read();
+
+  // EHLO
+  await cmd("EHLO localhost", "250");
+
+  // AUTH LOGIN
+  await cmd("AUTH LOGIN", "334");
+  await cmd(btoa(opts.username), "334");
+  await cmd(btoa(opts.password), "235");
+
+  // Envelope — SMTP envelope uses bare email addresses only
+  const fromEmail = opts.from.includes("<") 
+    ? opts.from.match(/<([^>]+)>/)?.[1] || opts.from 
+    : opts.from;
+  const toEmail = opts.to.includes("<")
+    ? opts.to.match(/<([^>]+)>/)?.[1] || opts.to
+    : opts.to;
+  await cmd(`MAIL FROM:<${fromEmail}>`, "250");
+  await cmd(`RCPT TO:<${toEmail}>`, "250");
+
+  // DATA
+  await cmd("DATA", "354");
+
+  const boundary = `----=_Part_${Date.now()}`;
+  const message = [
+    `From: ${opts.from}`,
+    `To: ${opts.to}`,
+    `Subject: ${opts.subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=UTF-8`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    opts.html,
+    ``,
+    `--${boundary}--`,
+    `.`,
+  ].join("\r\n");
+
+  await write(message);
+  const dataResp = await read();
+  if (!dataResp.startsWith("250")) {
+    throw new Error(`SMTP DATA response error: ${dataResp.trim()}`);
+  }
+
+  // QUIT
+  await write("QUIT");
+  conn.close();
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -42,67 +134,62 @@ serve(async (req: Request) => {
       ? "Check-in: 12:00 – 6:00 PM · Check-out: 11:00 AM"
       : formatTime(time);
 
-    const client = new SmtpClient();
-    await client.connectTLS({
+    const htmlBody = `
+      <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #1a3a2a; font-size: 22px; margin: 0;">Emerald Oasis</h1>
+        </div>
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          Hi ${memberName || "there"},
+        </p>
+        <p style="color: #333; font-size: 15px; line-height: 1.6;">
+          Your booking has been confirmed! Here are the details:
+        </p>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Experience</td>
+              <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${serviceName}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Date</td>
+              <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${formattedDate}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">${isCampsite ? "Schedule" : "Time"}</td>
+              <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${timeDisplay}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Amount Paid</td>
+              <td style="color: #2d6a4f; font-size: 13px; font-weight: 700; text-align: right; padding: 6px 0;">${price}</td>
+            </tr>
+            ${transactionId ? `
+            <tr>
+              <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Transaction</td>
+              <td style="color: #1a3a2a; font-size: 11px; text-align: right; padding: 6px 0;">#${transactionId}</td>
+            </tr>` : ""}
+          </table>
+        </div>
+        <p style="color: #888; font-size: 13px; line-height: 1.5;">
+          Please arrive on time. All guests must be PMA members before arrival.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+        <p style="color: #aaa; font-size: 11px; text-align: center;">
+          Emerald Oasis · Private Members Club
+        </p>
+      </div>
+    `;
+
+    await sendEmailViaSmtp({
       hostname: "smtp.gmail.com",
       port: 465,
       username: "info@emeraldascent.com",
       password: Deno.env.get("GMAIL_APP_PASSWORD")!,
-    });
-
-    await client.send({
       from: "Emerald Oasis <info@emeraldascent.com>",
       to: email,
       subject: `Booking Confirmed — ${serviceName}`,
-      content: "text/html",
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #1a3a2a; font-size: 22px; margin: 0;">Emerald Oasis</h1>
-          </div>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">
-            Hi ${memberName || "there"},
-          </p>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">
-            Your booking has been confirmed! Here are the details:
-          </p>
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 20px 0;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Experience</td>
-                <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${serviceName}</td>
-              </tr>
-              <tr>
-                <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Date</td>
-                <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${formattedDate}</td>
-              </tr>
-              <tr>
-                <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">${isCampsite ? "Schedule" : "Time"}</td>
-                <td style="color: #1a3a2a; font-size: 13px; font-weight: 600; text-align: right; padding: 6px 0;">${timeDisplay}</td>
-              </tr>
-              <tr>
-                <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Amount Paid</td>
-                <td style="color: #2d6a4f; font-size: 13px; font-weight: 700; text-align: right; padding: 6px 0;">${price}</td>
-              </tr>
-              ${transactionId ? `
-              <tr>
-                <td style="color: #6b7280; font-size: 13px; padding: 6px 0;">Transaction</td>
-                <td style="color: #1a3a2a; font-size: 11px; text-align: right; padding: 6px 0;">#${transactionId}</td>
-              </tr>` : ""}
-            </table>
-          </div>
-          <p style="color: #888; font-size: 13px; line-height: 1.5;">
-            Please arrive on time. All guests must be PMA members before arrival.
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
-          <p style="color: #aaa; font-size: 11px; text-align: center;">
-            Emerald Oasis · Private Members Club
-          </p>
-        </div>
-      `,
+      html: htmlBody,
     });
-
-    await client.close();
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
