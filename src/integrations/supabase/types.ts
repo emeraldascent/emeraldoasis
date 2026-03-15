@@ -482,6 +482,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      jotform_email_exists: { Args: { _email: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
