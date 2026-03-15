@@ -93,6 +93,22 @@ const AMENITIES: Amenity[] = [
       'Open during property hours',
     ],
   },
+  {
+    id: 'guest-policy',
+    name: 'Bringing Guests',
+    emoji: '👥',
+    tagline: 'How to invite friends & family',
+    icon: <Sun size={18} />,
+    details: [
+      '🎁 New members get 1 free guest Oasis Pass',
+      'After that, you must book & pay for your guest\'s Oasis Pass',
+      'All guests must become members (free) before arriving — they need to sign the PMA waiver',
+      'Have your guest download the app and tap "Become a Member" to sign up',
+      'No unregistered visitors allowed on property',
+    ],
+    bookLabel: 'Book a Guest Pass',
+    bookPath: '/book',
+  },
 ];
 
 /* ── Property rules data ───────────────────────────────── */
