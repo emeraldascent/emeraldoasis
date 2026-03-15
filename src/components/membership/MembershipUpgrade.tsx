@@ -24,7 +24,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   const currentIndex = TIER_ORDER.indexOf(member.membership_tier);
   const availableTiers = mode === 'upgrade'
     ? TIER_ORDER.filter((_, i) => i > currentIndex)
-    : [member.membership_tier];
+    : TIER_ORDER;
 
   const activeTier = mode === 'extend' ? member.membership_tier : selectedTier;
   const activeConfig = activeTier ? TIER_CONFIG[activeTier] : null;
@@ -136,57 +136,48 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
               </p>
             </div>
 
-            {mode === 'upgrade' ? (
-              availableTiers.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-4">You're already on the highest tier!</p>
-              ) : (
-                <div className="space-y-2">
-                  {availableTiers.map((tier) => {
-                    const config = TIER_CONFIG[tier];
-                    const isSelected = selectedTier === tier;
-                    return (
-                      <button
-                        key={tier}
-                        onClick={() => setSelectedTier(tier)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border transition-colors text-left"
-                        style={{
-                          borderColor: isSelected ? 'var(--ea-emerald)' : '#E5E7EB',
-                          backgroundColor: isSelected ? '#F0FDF4' : 'white',
-                        }}
-                      >
-                        <span className="text-lg">{config.emoji}</span>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
-                            {config.label}
-                          </p>
-                          <p className="text-[11px] text-gray-500">{config.description}</p>
-                        </div>
-                        <span className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
-                          ${config.price}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <div className="px-3 py-3 rounded-xl border border-dashed" style={{ borderColor: 'var(--ea-emerald)' }}>
-                <p className="text-xs text-gray-500">
-                  Extending adds <strong>{TIER_CONFIG[member.membership_tier].days} days</strong> from your current expiration date for <strong>${TIER_CONFIG[member.membership_tier].price}</strong>.
-                </p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 px-1">
+                {mode === 'upgrade' ? 'Select a new tier:' : 'Choose extension duration:'}
+              </p>
+              {availableTiers.map((tier) => {
+                const config = TIER_CONFIG[tier];
+                const isSelected = selectedTier === tier;
+                return (
+                  <button
+                    key={tier}
+                    onClick={() => setSelectedTier(tier)}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border transition-colors text-left"
+                    style={{
+                      borderColor: isSelected ? 'var(--ea-emerald)' : '#E5E7EB',
+                      backgroundColor: isSelected ? '#F0FDF4' : 'white',
+                    }}
+                  >
+                    <span className="text-lg">{config.emoji}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                        {config.label} — {config.days} days
+                      </p>
+                      <p className="text-[11px] text-gray-500">{config.description}</p>
+                    </div>
+                    <span className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+                      ${config.price}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
             <button
               onClick={proceedToPay}
-              disabled={mode === 'upgrade' && !selectedTier}
+              disabled={!selectedTier}
               className="w-full py-3 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
               style={{ backgroundColor: 'var(--ea-emerald)' }}
             >
               <ArrowUp size={14} />
-              {mode === 'upgrade'
-                ? `Upgrade to ${selectedTier ? TIER_CONFIG[selectedTier].label : '…'} — $${selectedTier ? TIER_CONFIG[selectedTier].price : ''}`
-                : `Extend — $${TIER_CONFIG[member.membership_tier].price}`}
+              {selectedTier
+                ? `${mode === 'upgrade' ? 'Upgrade' : 'Extend'} — $${TIER_CONFIG[selectedTier].price}`
+                : 'Select a duration'}
             </button>
           </>
         )}
