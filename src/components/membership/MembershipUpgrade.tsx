@@ -69,9 +69,9 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl w-full max-w-md p-5 pb-8 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
