@@ -15,6 +15,7 @@ const LOGO_URL =
 interface DashboardProps {
   member: Member | null;
   badgeStatus: BadgeStatus;
+  onRefreshMember?: () => void;
 }
 
 export function Dashboard({ member, badgeStatus }: DashboardProps) {
