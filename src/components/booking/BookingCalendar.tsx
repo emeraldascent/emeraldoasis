@@ -125,6 +125,7 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
 
   const isCampsite = CAMPSITE_IDS.includes(service.id);
   const isMemberPass = MEMBER_PASS_IDS.includes(service.id);
+  const isFreeWelcome = !!service.isFreeWelcome;
   const handleDateSelect = (day: number) => {
     const key = getDayKey(day);
     if (key < todayStr) return;
