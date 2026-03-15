@@ -84,7 +84,7 @@ const AMENITIES: Amenity[] = [
     id: 'emerald-market',
     name: 'Emerald Market',
     emoji: '🌿',
-    tagline: 'Local goods, apothecary & provisions',
+    tagline: 'Local goods & provisions',
     icon: <Store size={18} />,
     details: [
       'Locally sourced snacks & drinks',
