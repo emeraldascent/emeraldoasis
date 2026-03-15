@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Calendar, Clock, Users, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
 
 interface BookingWithMember {
   id: string;
