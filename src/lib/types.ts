@@ -22,6 +22,9 @@ export interface Member {
   subscription_end: string | null;
   created_at: string;
   updated_at: string;
+  authnet_customer_profile_id: string | null;
+  authnet_payment_profile_id: string | null;
+  saved_card_last4: string | null;
 }
 
 export interface MemberBooking {
