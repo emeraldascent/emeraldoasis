@@ -174,13 +174,17 @@ serve(async (req) => {
         const adminToken = await getAdminToken();
 
         const fullName = String(clientData?.name || "").trim();
-        const [firstName, ...rest] = fullName.split(" ");
-        const lastName = rest.join(" ");
+        const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
+        const safeEmail = String(clientData?.email || "").trim();
         const clientPayload = {
-          name: firstName || fullName || "Guest",
-          name2: lastName || "Guest",
-          email: String(clientData?.email || ""),
-          phone: String(clientData?.phone || ""),
+          name: fullName || "Guest User",
+          email: safeEmail || `guest_${Date.now()}@example.com`,
+          phone: normalizedPhone || "0000000000",
+          address1: "N/A",
+          address2: "N/A",
+          city: "N/A",
+          zip: "00000",
+          country_id: 1,
         };
 
         let clientResult: unknown;
