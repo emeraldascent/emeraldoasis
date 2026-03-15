@@ -85,15 +85,26 @@ export function UpcomingCalendar() {
 
   return (
     <div className="space-y-2">
-      <p
-        className="text-xs font-bold flex items-center gap-1.5"
-        style={{ color: 'var(--ea-midnight)' }}
+      <button
+        onClick={() => navigate('/events')}
+        className="w-full flex items-center justify-between group"
       >
-        <Calendar size={13} style={{ color: 'var(--ea-emerald)' }} />
-        Your Upcoming Bookings
-      </p>
+        <p
+          className="text-xs font-bold flex items-center gap-1.5"
+          style={{ color: 'var(--ea-midnight)' }}
+        >
+          <Calendar size={13} style={{ color: 'var(--ea-emerald)' }} />
+          Your Upcoming Bookings
+        </p>
+        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+          View all <ChevronRight size={12} />
+        </span>
+      </button>
 
-      <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+      <button
+        onClick={() => navigate('/events')}
+        className="w-full rounded-xl border border-gray-100 bg-white overflow-hidden text-left hover:border-gray-200 transition-colors"
+      >
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ea-emerald)' }} />
