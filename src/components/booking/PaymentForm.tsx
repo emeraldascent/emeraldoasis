@@ -51,8 +51,8 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
   const handleSubmit = () => {
     setError('');
 
-    if (!cardNumber || !expMonth || !expYear || !cvv) {
-      setError('Please fill in all card fields.');
+    if (!cardNumber || !expMonth || !expYear || !cvv || !zip) {
+      setError('Please fill in all fields.');
       return;
     }
 
@@ -63,6 +63,12 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
 
     setTokenizing(true);
 
+    // Accept.js expects 2-digit year
+    let twoDigitYear = expYear.replace(/\D/g, '');
+    if (twoDigitYear.length === 4) {
+      twoDigitYear = twoDigitYear.slice(2);
+    }
+
     const secureData = {
       authData: {
         clientKey: AUTHNET_CLIENT_KEY,
@@ -71,8 +77,9 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
       cardData: {
         cardNumber: cardNumber.replace(/\s/g, ''),
         month: expMonth.padStart(2, '0'),
-        year: expYear.length === 2 ? '20' + expYear : expYear,
+        year: twoDigitYear,
         cardCode: cvv,
+        zip: zip,
       },
     };
 
