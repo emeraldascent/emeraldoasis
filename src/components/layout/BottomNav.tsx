@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, CalendarDays, TreePine, User, PenLine, Shield } from 'lucide-react';
+import { Home, CalendarDays, TreePine, User, PenLine, Shield, PartyPopper } from 'lucide-react';
 
 interface BottomNavProps {
   isAuthenticated: boolean;
