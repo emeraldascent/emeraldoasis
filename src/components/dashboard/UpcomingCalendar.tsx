@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Tent, Sun, Star, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, Tent, Sun, Star, Loader2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Booking {
