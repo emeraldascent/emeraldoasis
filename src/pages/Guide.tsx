@@ -90,6 +90,7 @@ const AMENITIES: Amenity[] = [
     details: [
       'Natural, organic & regenerative snacks & drinks',
       'Handmade crafts & wellness products',
+      'Bulk staples, superfoods & herbs (coming soon)',
       'Provisions & trail supplies',
       'Open during select hours',
     ],
