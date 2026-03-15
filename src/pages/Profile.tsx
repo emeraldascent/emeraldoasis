@@ -275,6 +275,49 @@ export function Profile({ member, onLogout, onRefresh }: ProfileProps) {
 
         <Separator />
 
+        {/* Saved Payment Method */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold" style={{ color: 'var(--ea-midnight)', fontFamily: 'Inter, sans-serif' }}>
+            Payment Method
+          </h3>
+          {member.saved_card_last4 ? (
+            <div className="flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 bg-gray-50">
+              <CreditCard size={18} style={{ color: 'var(--ea-emerald)' }} />
+              <div className="flex-1">
+                <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                  •••• {member.saved_card_last4}
+                </p>
+                <p className="text-[10px] text-gray-500">Card on file</p>
+              </div>
+              <button
+                onClick={async () => {
+                  setRemovingCard(true);
+                  try {
+                    await supabase.functions.invoke('manage-payment-profile', {
+                      body: { action: 'delete', memberId: member.id },
+                    });
+                    onRefresh();
+                  } catch (e) {
+                    console.error('Failed to remove card:', e);
+                  } finally {
+                    setRemovingCard(false);
+                  }
+                }}
+                disabled={removingCard}
+                className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+              >
+                {removingCard ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 px-1">
+              No saved card. You can save one during your next payment.
+            </p>
+          )}
+        </div>
+
+        <Separator />
+
         {/* Logout */}
         <Button
           onClick={onLogout}
