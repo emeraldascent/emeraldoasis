@@ -10,7 +10,7 @@ interface Stats {
 
 export function AdminOverview() {
   const [stats, setStats] = useState<Stats>({
-    todayCheckIns: 0,
+    todayBookings: 0,
     activeMembers: 0,
     expiringThisWeek: 0,
   });
