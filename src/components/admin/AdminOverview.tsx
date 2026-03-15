@@ -25,12 +25,12 @@ export function AdminOverview() {
       weekFromNow.setDate(weekFromNow.getDate() + 7);
       const weekStr = weekFromNow.toISOString().split('T')[0];
 
-      // Today's check-ins
-      const { count: checkInCount } = await supabase
-        .from('check_ins')
+      // Today's bookings
+      const { count: bookingCount } = await supabase
+        .from('member_bookings')
         .select('*', { count: 'exact', head: true })
-        .gte('checked_in_at', `${todayStr}T00:00:00`)
-        .lt('checked_in_at', `${todayStr}T23:59:59`);
+        .eq('booking_date', todayStr)
+        .eq('status', 'confirmed');
 
       // Active members
       const { count: activeCount } = await supabase
