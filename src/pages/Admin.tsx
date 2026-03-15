@@ -3,8 +3,9 @@ import { GateCheck } from '../components/admin/GateCheck';
 import { MemberRoster } from '../components/admin/MemberRoster';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminCalendar } from '../components/admin/AdminCalendar';
+import { AdminEvents } from '../components/admin/AdminEvents';
 import { MapCalibrator } from '../components/admin/MapCalibrator';
-import { Search, Users, BarChart3, Calendar, MapPin } from 'lucide-react';
+import { Search, Users, BarChart3, Calendar, MapPin, PartyPopper } from 'lucide-react';
 
 export function Admin() {
   return (
