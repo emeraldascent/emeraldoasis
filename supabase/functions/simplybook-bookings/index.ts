@@ -132,22 +132,38 @@ function defaultRequiredFieldValue(field: string, base: Record<string, unknown>)
   return "N/A";
 }
 
+async function findExistingClientIdByEmail(adminToken: string, safeEmail: string): Promise<number | null> {
+  if (!safeEmail) return null;
+
+  const lookups: unknown[][] = [[{ search: safeEmail }], []];
+
+  for (const params of lookups) {
+    try {
+      const clientListRaw = await callAdminApi(adminToken, "getClientList", params);
+      const clientList: any[] = Array.isArray(clientListRaw) ? clientListRaw : Object.values(clientListRaw || {});
+      const existingClient = clientList.find((c: any) =>
+        String(c?.email || "").trim().toLowerCase() === safeEmail
+      );
+
+      if (existingClient?.id) {
+        const existingId = Number(existingClient.id);
+        if (!Number.isNaN(existingId)) return existingId;
+      }
+    } catch (err) {
+      console.warn(`getClientList lookup failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return null;
+}
+
 async function resolveClientIdForAdminBooking(adminToken: string, clientData: Record<string, unknown>) {
   const fullName = String(clientData?.name || "").trim();
   const safeEmail = String(clientData?.email || "").trim().toLowerCase();
   const normalizedPhone = String(clientData?.phone || "").replace(/[^\d+]/g, "");
 
-  if (safeEmail) {
-    const clientListRaw = await callAdminApi(adminToken, "getClientList", [{ search: safeEmail }]);
-    const clientList: any[] = Array.isArray(clientListRaw) ? clientListRaw : Object.values(clientListRaw || {});
-    const existingClient = clientList.find((c: any) =>
-      String(c?.email || "").trim().toLowerCase() === safeEmail
-    );
-    if (existingClient?.id) {
-      const existingId = Number(existingClient.id);
-      if (!Number.isNaN(existingId)) return existingId;
-    }
-  }
+  const existingByEmail = await findExistingClientIdByEmail(adminToken, safeEmail);
+  if (existingByEmail) return existingByEmail;
 
   const { firstName, lastName } = splitNameParts(fullName || "Guest User");
   const clientPayload: Record<string, unknown> = {
@@ -197,6 +213,15 @@ async function resolveClientIdForAdminBooking(adminToken: string, clientData: Re
       return clientId;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes("-32066") || message.toLowerCase().includes("already exist")) {
+        const existingAfterDuplicate = await findExistingClientIdByEmail(adminToken, safeEmail);
+        if (existingAfterDuplicate) {
+          console.warn(`Client already exists for ${safeEmail}; reusing existing id ${existingAfterDuplicate}`);
+          return existingAfterDuplicate;
+        }
+      }
+
       const customFieldMatch = message.match(/client_fields\/([a-f0-9]+)/i);
       if (!customFieldMatch) throw err;
 
