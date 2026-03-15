@@ -193,11 +193,21 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
             booking_date: selectedDate,
             booking_time: selectedTime,
             guest_names: guestNames ? [guestNames] : null,
-            is_member_pass: true,
+            is_member_pass: isMemberPass || isFreeWelcome,
             status: 'confirmed',
           });
         } catch (logErr) {
           console.warn('Failed to log booking:', logErr);
+        }
+      }
+
+      // Mark welcome pass as redeemed
+      if (isFreeWelcome) {
+        try {
+          await supabase.from('members').update({ welcome_pass_redeemed: true }).eq('id', member.id);
+          onRefreshMember?.();
+        } catch (err) {
+          console.warn('Failed to mark welcome pass redeemed:', err);
         }
       }
 
