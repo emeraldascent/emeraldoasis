@@ -158,10 +158,10 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
               type="text"
               inputMode="numeric"
               value={expYear}
-              onChange={(e) => setExpYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="YYYY"
+              onChange={(e) => setExpYear(e.target.value.replace(/\D/g, '').slice(0, 2))}
+              placeholder="YY"
               className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-emerald-400"
-              maxLength={4}
+              maxLength={2}
               disabled={isProcessing}
             />
           </div>
@@ -178,6 +178,21 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
               disabled={isProcessing}
             />
           </div>
+        </div>
+
+        {/* Zip Code */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-gray-500 font-medium">Billing Zip Code</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={zip}
+            onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
+            placeholder="12345"
+            className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-emerald-400"
+            maxLength={5}
+            disabled={isProcessing}
+          />
         </div>
       </div>
 
