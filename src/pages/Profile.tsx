@@ -4,10 +4,11 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
-import { LogOut, Camera, Save } from 'lucide-react';
+import { LogOut, Camera, Save, ArrowUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member } from '../lib/types';
 import { TIER_CONFIG } from '../lib/types';
+import { MembershipUpgrade } from '../components/membership/MembershipUpgrade';
 
 interface ProfileProps {
   member: Member | null;
