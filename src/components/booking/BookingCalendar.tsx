@@ -193,7 +193,7 @@ export function BookingCalendar({ service, member, onBack, onRefreshMember }: Bo
             booking_date: selectedDate,
             booking_time: selectedTime,
             guest_names: guestNames ? [guestNames] : null,
-            is_member_pass: isMemberPass || isFreeWelcome,
+            is_member_pass: isMemberPass,
             status: 'confirmed',
           });
         } catch (logErr) {
