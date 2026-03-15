@@ -35,7 +35,7 @@ interface PaymentFormProps {
 }
 
 // Public client key — safe to include in frontend
-const AUTHNET_CLIENT_KEY = '9pS45r8Q3UN5a5L4cG8sLn4V2w5ax93gAy3y6RSa8AhC58dEN4UJdx35bTg7m2rX';
+const AUTHNET_CLIENT_KEY = '8xbuZ89TPCkGDa946H7dvAht8L5czK3H4G78XpWCPktb6q723hc2ycSJh67h8YjA';
 const AUTHNET_API_LOGIN_ID = '3Lf94JvBr4J';
 
 export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentFormProps, 'onBack'>) {
