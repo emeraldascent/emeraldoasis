@@ -282,6 +282,8 @@ export type Database = {
           simplybook_client_id: string | null
           source: string
           subscription_active: boolean | null
+          subscription_end: string | null
+          subscription_start: string | null
           subscription_tier: string | null
           updated_at: string
           user_id: string
@@ -305,6 +307,8 @@ export type Database = {
           simplybook_client_id?: string | null
           source?: string
           subscription_active?: boolean | null
+          subscription_end?: string | null
+          subscription_start?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id: string
@@ -328,6 +332,8 @@ export type Database = {
           simplybook_client_id?: string | null
           source?: string
           subscription_active?: boolean | null
+          subscription_end?: string | null
+          subscription_start?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id?: string
