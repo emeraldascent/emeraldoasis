@@ -175,18 +175,40 @@ async function resolveClientIdForAdminBooking(adminToken: string, clientData: Re
     console.warn(`Could not load require_fields: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const clientResult = await callAdminApi(adminToken, "addClient", [clientPayload, false]);
-  const clientId = Number(
-    typeof clientResult === "object" && clientResult !== null
-      ? (clientResult as Record<string, unknown>).id ?? clientResult
-      : clientResult
-  );
+  const customClientFields: Record<string, unknown> = {};
 
-  if (!clientId || Number.isNaN(clientId)) {
-    throw new Error("Failed to resolve client ID for admin booking");
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      if (Object.keys(customClientFields).length > 0) {
+        clientPayload.client_fields = customClientFields;
+      }
+
+      const clientResult = await callAdminApi(adminToken, "addClient", [clientPayload, false]);
+      const clientId = Number(
+        typeof clientResult === "object" && clientResult !== null
+          ? (clientResult as Record<string, unknown>).id ?? clientResult
+          : clientResult
+      );
+
+      if (!clientId || Number.isNaN(clientId)) {
+        throw new Error("Failed to resolve client ID for admin booking");
+      }
+
+      return clientId;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const customFieldMatch = message.match(/client_fields\/([a-f0-9]+)/i);
+      if (!customFieldMatch) throw err;
+
+      const fieldHash = customFieldMatch[1];
+      if (customClientFields[fieldHash]) throw err;
+
+      customClientFields[fieldHash] = "N/A";
+      console.warn(`Missing required client field ${fieldHash}; retrying addClient (attempt ${attempt})`);
+    }
   }
 
-  return clientId;
+  throw new Error("Failed to create or resolve SimplyBook client after required field retries");
 }
 
 serve(async (req) => {
