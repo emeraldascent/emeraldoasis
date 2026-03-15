@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Member, BadgeStatus } from '../lib/types';
 import { MemberBadge } from '../components/dashboard/MemberBadge';
@@ -5,7 +6,8 @@ import { BookingGrid } from '../components/dashboard/BookingGrid';
 import { UpcomingCalendar } from '../components/dashboard/UpcomingCalendar';
 import { PropertyStatus } from '../components/dashboard/PropertyStatus';
 import { QuickLinks } from '../components/dashboard/QuickLinks';
-import { Droplets, ShoppingBag, Smartphone, Star } from 'lucide-react';
+import { MembershipUpgrade } from '../components/membership/MembershipUpgrade';
+import { Droplets, ShoppingBag, Smartphone, Star, RefreshCw } from 'lucide-react';
 
 const LOGO_URL =
   '/ea-logo.jpg';
