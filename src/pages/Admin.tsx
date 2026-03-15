@@ -3,7 +3,8 @@ import { GateCheck } from '../components/admin/GateCheck';
 import { MemberRoster } from '../components/admin/MemberRoster';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminCalendar } from '../components/admin/AdminCalendar';
-import { Search, Users, BarChart3, Calendar } from 'lucide-react';
+import { MapCalibrator } from '../components/admin/MapCalibrator';
+import { Search, Users, BarChart3, Calendar, MapPin } from 'lucide-react';
 
 export function Admin() {
   return (
@@ -17,7 +18,7 @@ export function Admin() {
         </h1>
 
         <Tabs defaultValue="gate" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-4">
+          <TabsList className="w-full grid grid-cols-5 mb-4">
             <TabsTrigger value="gate" className="text-xs gap-1">
               <Search size={14} />
               Gate
@@ -33,6 +34,10 @@ export function Admin() {
             <TabsTrigger value="overview" className="text-xs gap-1">
               <BarChart3 size={14} />
               Stats
+            </TabsTrigger>
+            <TabsTrigger value="map" className="text-xs gap-1">
+              <MapPin size={14} />
+              Map
             </TabsTrigger>
           </TabsList>
 
@@ -50,6 +55,10 @@ export function Admin() {
 
           <TabsContent value="overview">
             <AdminOverview />
+          </TabsContent>
+
+          <TabsContent value="map">
+            <MapCalibrator />
           </TabsContent>
         </Tabs>
       </div>

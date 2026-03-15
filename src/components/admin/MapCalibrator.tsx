@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { MapPin, Check, Copy, Loader2 } from 'lucide-react';
-import { KEY_LOCATIONS, type KeyLocation } from '@/config/mapConfig';
+import { KEY_LOCATIONS } from '@/config/mapConfig';
 
 export function MapCalibrator() {
   const [updatedCoords, setUpdatedCoords] = useState<Record<string, [number, number]>>({});
