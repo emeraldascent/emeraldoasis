@@ -28,17 +28,20 @@ interface AuthNetResponse {
 }
 
 interface PaymentFormProps {
-  amount: string; // e.g. "$25"
-  onPaymentSuccess: (opaqueData: { dataDescriptor: string; dataValue: string }) => void;
-  onBack: () => void;
+  amount: string;
+  onPaymentSuccess: (opaqueData: { dataDescriptor: string; dataValue: string }, saveCard?: boolean) => void;
+  onBack?: () => void;
   loading: boolean;
+  showSaveOption?: boolean;
+  savedCardLast4?: string | null;
+  onUseSavedCard?: () => void;
 }
 
 // Public client key — safe to include in frontend
 const AUTHNET_CLIENT_KEY = '8xbuZ89TPCkGDa946H7dvAht8L5czK3H4G78XpWCPktb6q723hc2ycSJh67h8YjA';
 const AUTHNET_API_LOGIN_ID = '6s87dAMb6VH';
 
-export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentFormProps, 'onBack'>) {
+export function PaymentForm({ amount, onPaymentSuccess, loading, showSaveOption = false, savedCardLast4, onUseSavedCard }: PaymentFormProps) {
   const [cardNumber, setCardNumber] = useState('');
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
@@ -46,6 +49,7 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
   const [zip, setZip] = useState('');
   const [error, setError] = useState('');
   const [tokenizing, setTokenizing] = useState(false);
+  const [saveCard, setSaveCard] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = () => {
@@ -63,7 +67,6 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
 
     setTokenizing(true);
 
-    // Accept.js expects 2-digit year
     let twoDigitYear = expYear.replace(/\D/g, '');
     if (twoDigitYear.length === 4) {
       twoDigitYear = twoDigitYear.slice(2);
@@ -94,7 +97,7 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
         return;
       }
       if (response.opaqueData) {
-        onPaymentSuccess(response.opaqueData);
+        onPaymentSuccess(response.opaqueData, saveCard);
       }
     });
   };
@@ -108,6 +111,35 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
 
   return (
     <div ref={formRef} className="space-y-4">
+      {/* Saved card option */}
+      {savedCardLast4 && onUseSavedCard && (
+        <button
+          onClick={onUseSavedCard}
+          disabled={isProcessing}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors text-left hover:border-emerald-300"
+          style={{ borderColor: '#D1FAE5', backgroundColor: '#F0FDF4' }}
+        >
+          <CreditCard size={18} style={{ color: 'var(--ea-emerald)' }} />
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+              Use saved card •••• {savedCardLast4}
+            </p>
+            <p className="text-[10px] text-gray-500">Quick checkout with your card on file</p>
+          </div>
+          <span className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
+            {amount}
+          </span>
+        </button>
+      )}
+
+      {savedCardLast4 && onUseSavedCard && (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-[10px] text-gray-400 font-medium">OR ENTER NEW CARD</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <CreditCard size={16} style={{ color: 'var(--ea-emerald)' }} />
@@ -198,6 +230,25 @@ export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentF
             disabled={isProcessing}
           />
         </div>
+
+        {/* Save card checkbox */}
+        {showSaveOption && (
+          <label className="flex items-center gap-2.5 cursor-pointer py-1">
+            <input
+              type="checkbox"
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 accent-emerald-600"
+              disabled={isProcessing}
+            />
+            <div>
+              <span className="text-xs font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                Save card for future payments
+              </span>
+              <p className="text-[10px] text-gray-400">Securely stored via Authorize.net</p>
+            </div>
+          </label>
+        )}
       </div>
 
       <Button

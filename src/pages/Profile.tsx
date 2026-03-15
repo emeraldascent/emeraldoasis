@@ -4,7 +4,7 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
-import { LogOut, Camera, Save, ArrowUp } from 'lucide-react';
+import { LogOut, Camera, Save, ArrowUp, CreditCard, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member } from '../lib/types';
 import { TIER_CONFIG } from '../lib/types';
@@ -20,6 +20,7 @@ export function Profile({ member, onLogout, onRefresh }: ProfileProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [removingCard, setRemovingCard] = useState(false);
   const [form, setForm] = useState({
     first_name: member?.first_name ?? '',
     last_name: member?.last_name ?? '',
@@ -269,6 +270,49 @@ export function Profile({ member, onLogout, onRefresh }: ProfileProps) {
                 Cancel
               </Button>
             </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Saved Payment Method */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold" style={{ color: 'var(--ea-midnight)', fontFamily: 'Inter, sans-serif' }}>
+            Payment Method
+          </h3>
+          {member.saved_card_last4 ? (
+            <div className="flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 bg-gray-50">
+              <CreditCard size={18} style={{ color: 'var(--ea-emerald)' }} />
+              <div className="flex-1">
+                <p className="text-sm font-medium" style={{ color: 'var(--ea-midnight)' }}>
+                  •••• {member.saved_card_last4}
+                </p>
+                <p className="text-[10px] text-gray-500">Card on file</p>
+              </div>
+              <button
+                onClick={async () => {
+                  setRemovingCard(true);
+                  try {
+                    await supabase.functions.invoke('manage-payment-profile', {
+                      body: { action: 'delete', memberId: member.id },
+                    });
+                    onRefresh();
+                  } catch (e) {
+                    console.error('Failed to remove card:', e);
+                  } finally {
+                    setRemovingCard(false);
+                  }
+                }}
+                disabled={removingCard}
+                className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+              >
+                {removingCard ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 px-1">
+              No saved card. You can save one during your next payment.
+            </p>
           )}
         </div>
 

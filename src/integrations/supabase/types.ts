@@ -364,6 +364,8 @@ export type Database = {
       }
       members: {
         Row: {
+          authnet_customer_profile_id: string | null
+          authnet_payment_profile_id: string | null
           created_at: string
           email: string
           emergency_contact: string
@@ -378,6 +380,7 @@ export type Database = {
           photo_url: string | null
           pma_agreed: boolean
           pma_agreed_at: string | null
+          saved_card_last4: string | null
           simplybook_client_id: string | null
           source: string
           subscription_active: boolean | null
@@ -389,6 +392,8 @@ export type Database = {
           welcome_credits_issued: boolean
         }
         Insert: {
+          authnet_customer_profile_id?: string | null
+          authnet_payment_profile_id?: string | null
           created_at?: string
           email: string
           emergency_contact?: string
@@ -403,6 +408,7 @@ export type Database = {
           photo_url?: string | null
           pma_agreed?: boolean
           pma_agreed_at?: string | null
+          saved_card_last4?: string | null
           simplybook_client_id?: string | null
           source?: string
           subscription_active?: boolean | null
@@ -414,6 +420,8 @@ export type Database = {
           welcome_credits_issued?: boolean
         }
         Update: {
+          authnet_customer_profile_id?: string | null
+          authnet_payment_profile_id?: string | null
           created_at?: string
           email?: string
           emergency_contact?: string
@@ -428,6 +436,7 @@ export type Database = {
           photo_url?: string | null
           pma_agreed?: boolean
           pma_agreed_at?: string | null
+          saved_card_last4?: string | null
           simplybook_client_id?: string | null
           source?: string
           subscription_active?: boolean | null

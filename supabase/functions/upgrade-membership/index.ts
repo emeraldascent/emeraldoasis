@@ -66,7 +66,7 @@ serve(async (req: Request) => {
       return respond(401, { error: "Invalid session" });
     }
 
-    const { opaqueData, tier, memberId, email, memberName, mode } = await req.json();
+    const { opaqueData, tier, memberId, email, memberName, mode, useSavedCard } = await req.json();
 
     if (!tier || !TIER_PRICES[tier]) {
       return respond(400, { error: "Invalid membership tier" });
@@ -80,7 +80,7 @@ serve(async (req: Request) => {
 
     const { data: memberRecord, error: memberError } = await adminSupabase
       .from("members")
-      .select("id, user_id, membership_end, membership_tier")
+      .select("id, user_id, membership_end, membership_tier, authnet_customer_profile_id, authnet_payment_profile_id")
       .eq("id", memberId)
       .maybeSingle();
 
@@ -90,7 +90,12 @@ serve(async (req: Request) => {
 
     const amount = TIER_PRICES[tier];
 
-    if (!opaqueData?.dataDescriptor || !opaqueData?.dataValue) {
+    // Validate payment method
+    if (useSavedCard) {
+      if (!memberRecord.authnet_customer_profile_id || !memberRecord.authnet_payment_profile_id) {
+        return respond(400, { error: "No saved payment method found" });
+      }
+    } else if (!opaqueData?.dataDescriptor || !opaqueData?.dataValue) {
       return respond(400, { error: "Missing payment token" });
     }
 
@@ -105,7 +110,33 @@ serve(async (req: Request) => {
       ? `Extend ${tier} PMA Membership — ${TIER_DAYS[tier]} days`
       : `Upgrade to ${tier} PMA Membership — ${TIER_DAYS[tier]} days`;
 
-    const xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+    let xmlBody: string;
+
+    if (useSavedCard) {
+      // Charge using saved customer profile
+      xmlBody = `<?xml version="1.0" encoding="utf-8"?>
+<createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
+  <merchantAuthentication>
+    <name>${esc(apiLoginId)}</name>
+    <transactionKey>${esc(transactionKey)}</transactionKey>
+  </merchantAuthentication>
+  <transactionRequest>
+    <transactionType>authCaptureTransaction</transactionType>
+    <amount>${amount.toFixed(2)}</amount>
+    <profile>
+      <customerProfileId>${esc(memberRecord.authnet_customer_profile_id!)}</customerProfileId>
+      <paymentProfile>
+        <paymentProfileId>${esc(memberRecord.authnet_payment_profile_id!)}</paymentProfileId>
+      </paymentProfile>
+    </profile>
+    <order>
+      <description>${esc(description)}</description>
+    </order>
+  </transactionRequest>
+</createTransactionRequest>`;
+    } else {
+      // Charge using opaque data (one-time token)
+      xmlBody = `<?xml version="1.0" encoding="utf-8"?>
 <createTransactionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
   <merchantAuthentication>
     <name>${esc(apiLoginId)}</name>
@@ -132,6 +163,7 @@ serve(async (req: Request) => {
     </billTo>
   </transactionRequest>
 </createTransactionRequest>`;
+    }
 
     const res = await fetch(AUTHNET_URL, {
       method: "POST",
