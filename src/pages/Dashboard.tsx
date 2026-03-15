@@ -18,8 +18,9 @@ interface DashboardProps {
   onRefreshMember?: () => void;
 }
 
-export function Dashboard({ member, badgeStatus }: DashboardProps) {
+export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardProps) {
   const navigate = useNavigate();
+  const [showExtend, setShowExtend] = useState(false);
 
   if (!member) {
     return (
