@@ -3,7 +3,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown } from 'lucide-react';
+import { Crown, Calendar } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -18,23 +18,45 @@ function getBadgeStatus(member: Member): BadgeStatus {
   return 'active';
 }
 
+interface TodayBooking {
+  id: string;
+  service_name: string;
+  booking_time: string | null;
+  member_id: string;
+  guest_names: string[] | null;
+}
+
 type Filter = 'all' | 'active' | 'expired';
 
 export function MemberRoster() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [todayBookings, setTodayBookings] = useState<TodayBooking[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+
     const fetchMembers = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [membersRes, bookingsRes] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('member_bookings')
+          .select('id, service_name, booking_time, member_id, guest_names')
+          .eq('booking_date', today)
+          .eq('status', 'confirmed')
+          .order('booking_time', { ascending: true }),
+      ]);
 
-      if (!error && data) {
-        setMembers(data as Member[]);
+      if (!membersRes.error && membersRes.data) {
+        setMembers(membersRes.data as Member[]);
+      }
+      if (!bookingsRes.error && bookingsRes.data) {
+        setTodayBookings(bookingsRes.data as TodayBooking[]);
       }
       setLoading(false);
     };
@@ -63,6 +85,12 @@ export function MemberRoster() {
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
 
+  const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
+    if (!acc[b.member_id]) acc[b.member_id] = [];
+    acc[b.member_id].push(b);
+    return acc;
+  }, {});
+
   const handleExport = () => {
     const headers = ['Name', 'Email', 'Phone', 'Tier', 'Expires', 'Status', 'Source'];
     const rows = filtered.map((m) => [
@@ -84,8 +112,42 @@ export function MemberRoster() {
     URL.revokeObjectURL(url);
   };
 
+  const formatTime = (t: string | null) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
   return (
     <div className="space-y-4">
+      {/* Today's bookings summary */}
+      {todayBookings.length > 0 && (
+        <div className="p-3 rounded-xl border border-border" style={{ backgroundColor: '#F0FDF4' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar size={14} style={{ color: 'var(--ea-emerald)' }} />
+            <p className="text-xs font-bold" style={{ color: 'var(--ea-midnight)' }}>
+              Today's Bookings ({todayBookings.length})
+            </p>
+          </div>
+          <div className="space-y-1">
+            {todayBookings.map((b) => {
+              const member = members.find(m => m.id === b.member_id);
+              return (
+                <div key={b.id} className="flex items-center justify-between text-[11px]">
+                  <span className="text-gray-600">
+                    {member ? `${member.first_name} ${member.last_name}` : 'Unknown'}
+                  </span>
+                  <span className="text-gray-500">
+                    {b.service_name} {b.booking_time ? `· ${formatTime(b.booking_time)}` : ''}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filter tabs */}
       <div className="flex gap-2">
         {([
@@ -123,45 +185,61 @@ export function MemberRoster() {
               day: 'numeric',
               year: 'numeric',
             });
+            const memberBookings = bookingsByMember[member.id];
 
             return (
               <div
                 key={member.id}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100"
+                className="p-3 rounded-xl bg-white border border-gray-100"
               >
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={member.photo_url ?? undefined} />
-                  <AvatarFallback
-                    className="text-xs font-bold text-white"
-                    style={{ backgroundColor: isActive ? '#1B5E20' : '#B71C1C' }}
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={member.photo_url ?? undefined} />
+                    <AvatarFallback
+                      className="text-xs font-bold text-white"
+                      style={{ backgroundColor: isActive ? '#1B5E20' : '#B71C1C' }}
+                    >
+                      {member.first_name[0]}{member.last_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
+                      {member.first_name} {member.last_name}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {member.membership_tier} · Expires {endDate}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleToggleSubscription(member)}
+                    title={`Toggle Oasis Pass Subscription (${member.subscription_active ? 'Active' : 'Inactive'})`}
+                    className={`p-1.5 rounded-full transition-colors ${member.subscription_active ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                   >
-                    {member.first_name[0]}{member.last_name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
-                    {member.first_name} {member.last_name}
-                  </p>
-                  <p className="text-[11px] text-gray-400">
-                    {member.membership_tier} · Expires {endDate}
-                  </p>
+                    <Crown size={14} className={member.subscription_active ? 'fill-current' : ''} />
+                  </button>
+
+                  <Badge
+                    variant={isActive ? 'default' : 'destructive'}
+                    className="text-[9px] shrink-0"
+                    style={isActive ? { backgroundColor: '#1B5E20' } : undefined}
+                  >
+                    {isActive ? 'ACTIVE' : 'EXPIRED'}
+                  </Badge>
                 </div>
 
-                <button
-                  onClick={() => handleToggleSubscription(member)}
-                  title={`Toggle Oasis Pass Subscription (${member.subscription_active ? 'Active' : 'Inactive'})`}
-                  className={`p-1.5 rounded-full transition-colors ${member.subscription_active ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                >
-                  <Crown size={14} className={member.subscription_active ? 'fill-current' : ''} />
-                </button>
-
-                <Badge
-                  variant={isActive ? 'default' : 'destructive'}
-                  className="text-[9px] shrink-0"
-                  style={isActive ? { backgroundColor: '#1B5E20' } : undefined}
-                >
-                  {isActive ? 'ACTIVE' : 'EXPIRED'}
-                </Badge>
+                {/* Today's bookings for this member */}
+                {memberBookings && memberBookings.length > 0 && (
+                  <div className="mt-2 ml-13 pl-13 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
+                    {memberBookings.map((b) => (
+                      <div key={b.id} className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                        <Calendar size={10} style={{ color: 'var(--ea-emerald)' }} />
+                        <span>{b.service_name}</span>
+                        {b.booking_time && <span className="opacity-60">· {formatTime(b.booking_time)}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
