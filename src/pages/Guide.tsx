@@ -75,7 +75,8 @@ const AMENITIES: Amenity[] = [
     icon: <Sofa size={18} />,
     details: [
       'Indoor seating with WiFi & power',
-      'Quiet workspace during the day',
+      'Lush plants, aquarium & inspiring creative atmosphere',
+      'Quiet coworking by day, intimate event space by night',
       'Refreshments available downstairs during market hours',
       'Open to all pass holders & campers',
     ],
