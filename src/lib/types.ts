@@ -18,6 +18,8 @@ export interface Member {
   simplybook_client_id: string | null;
   subscription_tier: 'silver' | 'gold' | null;
   subscription_active: boolean;
+  subscription_start: string | null;
+  subscription_end: string | null;
   created_at: string;
   updated_at: string;
 }
