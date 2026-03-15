@@ -118,3 +118,37 @@
     font-family: 'Playfair Display', Georgia, serif;
   }
 }
+
+/* ── Leaflet & GPS Map ── */
+.leaflet-container {
+  font-family: 'Inter', sans-serif;
+}
+.custom-emoji-marker {
+  background: transparent !important;
+  border: none !important;
+}
+.user-location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+.user-location-dot {
+  width: 16px;
+  height: 16px;
+  background: #4285F4;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(66, 133, 244, 0.4);
+  animation: gps-pulse 2s infinite;
+}
+@keyframes gps-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4); }
+  70% { box-shadow: 0 0 0 20px rgba(66, 133, 244, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0); }
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+}
+.leaflet-popup-tip {
+  box-shadow: none !important;
+}
