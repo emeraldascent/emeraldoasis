@@ -118,6 +118,7 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
         service={selectedService}
         member={member}
         onBack={() => setSelectedService(null)}
+        onRefreshMember={onRefreshMember}
       />
     );
   }
