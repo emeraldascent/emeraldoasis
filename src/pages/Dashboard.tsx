@@ -97,7 +97,7 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <ShoppingBag size={14} style={{ color: 'var(--ea-emerald)' }} />
-                  <span>Emerald Market access</span>
+                  <span>Emerald Market — coming April 2026 (select days/hrs)</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <Smartphone size={14} style={{ color: 'var(--ea-emerald)' }} />
