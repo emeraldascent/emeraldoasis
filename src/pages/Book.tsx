@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Lock, Sun, Tent, Users, Clock, Star } from 'lucide-react';
+import { Lock, Sun, Tent, Users, Clock, Star, Gift } from 'lucide-react';
 import { BookingCalendar } from '../components/booking/BookingCalendar';
 import { MemberPassSection } from '../components/booking/MemberPassSection';
 import type { Member, BadgeStatus } from '../lib/types';
@@ -12,7 +12,13 @@ interface ServiceCard {
   description: string;
   price: string;
   icon: React.ReactNode;
+  isFreeWelcome?: boolean;
 }
+
+const WELCOME_PASSES: ServiceCard[] = [
+  { id: 18, name: 'Welcome Pass — 2 Hours', description: 'Your free welcome gift!', price: 'FREE', icon: <Gift size={18} />, isFreeWelcome: true },
+  { id: 19, name: 'Welcome Pass — 4 Hours', description: 'Your free welcome gift!', price: 'FREE', icon: <Gift size={18} />, isFreeWelcome: true },
+];
 
 const DAY_PASSES: ServiceCard[] = [
   { id: 18, name: 'Oasis Pass — 2 Hours', description: 'Spring water, trails, Zen Lounge & market', price: '$4', icon: <Clock size={18} /> },
@@ -44,8 +50,11 @@ interface BookProps {
 
 export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const showWelcomeFirst = (location.state as any)?.welcomePass === true;
   const [selectedService, setSelectedService] = useState<ServiceCard | null>(null);
   const isActive = badgeStatus === 'active';
+  const hasWelcomePass = member && !member.welcome_pass_redeemed;
 
   if (!member) {
     return (
