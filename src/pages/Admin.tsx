@@ -5,7 +5,8 @@ import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminCalendar } from '../components/admin/AdminCalendar';
 import { AdminEvents } from '../components/admin/AdminEvents';
 import { MapCalibrator } from '../components/admin/MapCalibrator';
-import { Search, Users, BarChart3, Calendar, MapPin, PartyPopper } from 'lucide-react';
+import { TodayBookings } from '../components/admin/TodayBookings';
+import { Search, Users, BarChart3, Calendar, MapPin, PartyPopper, CalendarCheck } from 'lucide-react';
 
 export function Admin() {
   return (
@@ -18,8 +19,12 @@ export function Admin() {
           Admin Panel
         </h1>
 
-        <Tabs defaultValue="gate" className="w-full">
-          <TabsList className="w-full grid grid-cols-6 mb-4">
+        <Tabs defaultValue="today" className="w-full">
+          <TabsList className="w-full grid grid-cols-7 mb-4">
+            <TabsTrigger value="today" className="text-xs gap-1">
+              <CalendarCheck size={14} />
+              Today
+            </TabsTrigger>
             <TabsTrigger value="gate" className="text-xs gap-1">
               <Search size={14} />
               Gate
@@ -45,6 +50,10 @@ export function Admin() {
               Map
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="today">
+            <TodayBookings />
+          </TabsContent>
 
           <TabsContent value="gate">
             <GateCheck />
