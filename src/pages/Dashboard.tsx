@@ -131,6 +131,18 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
               </div>
             </div>
 
+            {/* Property status, quick links & reminder */}
+            <PropertyStatus />
+            <QuickLinks />
+            <div
+              className="p-3 rounded-xl text-center"
+              style={{ backgroundColor: '#EDEEF8' }}
+            >
+              <p className="text-[10px]" style={{ color: 'var(--ea-lilac)' }}>
+                Membership ≠ Free Access · All experiences require advance booking at emeraldoasis.club
+              </p>
+            </div>
+
             {/* Oasis Pass upgrade — only show if no active subscription */}
             {!member.subscription_active && (
               <button
@@ -185,21 +197,6 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
             <BookingGrid disabled />
           </>
         )}
-
-        {/* Below fold content */}
-        <PropertyStatus />
-
-        <QuickLinks />
-
-        {/* Reminder */}
-        <div
-          className="p-3 rounded-xl text-center"
-          style={{ backgroundColor: '#EDEEF8' }}
-        >
-          <p className="text-[10px]" style={{ color: 'var(--ea-lilac)' }}>
-            Membership ≠ Free Access · All experiences require advance booking at emeraldoasis.club
-          </p>
-        </div>
       </div>
     </div>
   );
