@@ -172,7 +172,24 @@ serve(async (req) => {
         console.warn("Public booking requires client auth; falling back to admin booking flow");
 
         const adminToken = await getAdminToken();
-        const clientResult = await callAdminApi(adminToken, "addClient", [clientData]);
+
+        const fullName = String(clientData?.name || "").trim();
+        const [firstName, ...rest] = fullName.split(" ");
+        const lastName = rest.join(" ");
+        const clientPayload = {
+          name: firstName || fullName || "Guest",
+          name2: lastName || "Guest",
+          email: String(clientData?.email || ""),
+          phone: String(clientData?.phone || ""),
+        };
+
+        let clientResult: unknown;
+        try {
+          clientResult = await callAdminApi(adminToken, "addClient", [clientPayload]);
+        } catch (addClientErr) {
+          throw new Error(`Admin addClient failed: ${addClientErr instanceof Error ? addClientErr.message : String(addClientErr)}`);
+        }
+
         const clientId = Number(
           typeof clientResult === "object" && clientResult !== null
             ? (clientResult as Record<string, unknown>).id ?? clientResult
@@ -188,21 +205,27 @@ serve(async (req) => {
         const eventInfo = eventList.find((e: any) => Number(e?.id) === Number(eventId));
         const durationMinutes = Number(eventInfo?.duration) > 0 ? Number(eventInfo.duration) : 30;
         const { endDate, endTime } = addMinutesToDateTime(date, time, durationMinutes);
+        const clientTimeOffset = 60;
 
-        const result = await callAdminApi(adminToken, "book", [
-          eventId,
-          resolvedUnitId,
-          clientId,
-          date,
-          time,
-          endDate,
-          endTime,
-          0,
-          additionalObj,
-          count || 1,
-          null,
-          null,
-        ]);
+        let result: unknown;
+        try {
+          result = await callAdminApi(adminToken, "book", [
+            eventId,
+            resolvedUnitId,
+            clientId,
+            date,
+            time,
+            endDate,
+            endTime,
+            clientTimeOffset,
+            additionalObj,
+            count || 1,
+            null,
+            null,
+          ]);
+        } catch (adminBookErr) {
+          throw new Error(`Admin book failed: ${adminBookErr instanceof Error ? adminBookErr.message : String(adminBookErr)}`);
+        }
 
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
