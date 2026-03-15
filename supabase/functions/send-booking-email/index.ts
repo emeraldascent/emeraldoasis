@@ -57,9 +57,15 @@ async function sendEmailViaSmtp(opts: {
   await cmd(btoa(opts.username), "334");
   await cmd(btoa(opts.password), "235");
 
-  // Envelope
-  await cmd(`MAIL FROM:<${opts.from}>`, "250");
-  await cmd(`RCPT TO:<${opts.to}>`, "250");
+  // Envelope — SMTP envelope uses bare email addresses only
+  const fromEmail = opts.from.includes("<") 
+    ? opts.from.match(/<([^>]+)>/)?.[1] || opts.from 
+    : opts.from;
+  const toEmail = opts.to.includes("<")
+    ? opts.to.match(/<([^>]+)>/)?.[1] || opts.to
+    : opts.to;
+  await cmd(`MAIL FROM:<${fromEmail}>`, "250");
+  await cmd(`RCPT TO:<${toEmail}>`, "250");
 
   // DATA
   await cmd("DATA", "354");
