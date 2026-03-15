@@ -63,7 +63,7 @@ export function MembershipUpgrade({ member, onComplete, onClose, mode }: Members
   };
 
   const proceedToPay = () => {
-    if (mode === 'extend' || selectedTier) {
+    if (selectedTier) {
       setStep('pay');
     }
   };
