@@ -7,7 +7,7 @@ import { UpcomingCalendar } from '../components/dashboard/UpcomingCalendar';
 import { PropertyStatus } from '../components/dashboard/PropertyStatus';
 import { QuickLinks } from '../components/dashboard/QuickLinks';
 import { MembershipUpgrade } from '../components/membership/MembershipUpgrade';
-import { Droplets, ShoppingBag, Smartphone, Star, RefreshCw } from 'lucide-react';
+import { Droplets, ShoppingBag, Smartphone, Star, RefreshCw, Gift } from 'lucide-react';
 
 const LOGO_URL =
   '/ea-logo.jpg';
