@@ -54,6 +54,10 @@ export function Admin() {
             <AdminCalendar />
           </TabsContent>
 
+          <TabsContent value="events">
+            <AdminEvents />
+          </TabsContent>
+
           <TabsContent value="roster">
             <MemberRoster />
           </TabsContent>
