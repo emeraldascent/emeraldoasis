@@ -17,6 +17,7 @@ const authNav = [
 const adminNav = [
   { path: '/dashboard', label: 'Home', icon: Home },
   { path: '/book', label: 'Book', icon: CalendarDays },
+  { path: '/events', label: 'Events', icon: PartyPopper },
   { path: '/admin', label: 'Admin', icon: Shield },
   { path: '/guide', label: 'Guide', icon: TreePine },
   { path: '/profile', label: 'Profile', icon: User },

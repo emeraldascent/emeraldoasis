@@ -77,6 +77,15 @@ function AppContent() {
           }
         />
         <Route
+          path="/events"
+          element={
+            <AuthGuard user={user} loading={loading}>
+              <Events />
+              <BottomNav isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
+            </AuthGuard>
+          }
+        />
+        <Route
           path="/profile"
           element={
             <AuthGuard user={user} loading={loading}>
