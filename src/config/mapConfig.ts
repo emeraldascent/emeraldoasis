@@ -76,10 +76,10 @@ export const KEY_LOCATIONS: KeyLocation[] = [
   },
   {
     id: 'campsite-2',
-    name: 'Campsite 2',
-    description: 'Creekside camping',
+    name: 'Campsite 2 (Group)',
+    description: 'Group creekside camping',
     coords: [35.734, -82.431],
-    icon: '⛺',
+    icon: '🏕️',
     category: 'campsite',
   },
   {
