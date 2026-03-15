@@ -85,6 +85,31 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
         {/* Active member content */}
         {isActive && (
           <>
+            {/* Free Welcome Pass banner */}
+            {!member.welcome_pass_redeemed && (
+              <button
+                onClick={() => navigate('/book', { state: { welcomePass: true } })}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border transition-colors hover:border-border/80"
+                style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: '#DCFCE7', color: 'var(--ea-emerald)' }}
+                >
+                  <Gift size={18} />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+                    🎁 Free Oasis Pass
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Your welcome gift — 2 or 4 hour pass, on us!
+                  </p>
+                </div>
+                <span className="text-muted-foreground shrink-0 text-sm">→</span>
+              </button>
+            )}
+
             {/* Membership includes */}
             <div className="p-4 rounded-xl" style={{ backgroundColor: '#F1F5F9' }}>
               <p className="text-xs font-bold mb-2" style={{ color: 'var(--ea-midnight)' }}>
