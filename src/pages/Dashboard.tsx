@@ -60,6 +60,28 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
         {/* Badge — always above fold */}
         <MemberBadge member={member} badgeStatus={badgeStatus} />
 
+        {/* Extend PMA button */}
+        {isActive && (
+          <>
+            <button
+              onClick={() => setShowExtend(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-colors hover:opacity-80"
+              style={{ color: 'var(--ea-emerald)', backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}
+            >
+              <RefreshCw size={12} />
+              Extend PMA Membership
+            </button>
+            {showExtend && (
+              <MembershipUpgrade
+                member={member}
+                mode="extend"
+                onComplete={() => onRefreshMember?.()}
+                onClose={() => setShowExtend(false)}
+              />
+            )}
+          </>
+        )}
+
         {/* Active member content */}
         {isActive && (
           <>
