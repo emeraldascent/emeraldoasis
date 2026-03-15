@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUp, Check, X, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowUp, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member, MembershipTier } from '@/lib/types';
 import { TIER_CONFIG } from '@/lib/types';
