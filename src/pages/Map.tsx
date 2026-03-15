@@ -4,6 +4,7 @@ import { InteractivePropertyMap } from '@/components/map/InteractivePropertyMap'
 import { KEY_LOCATIONS, CATEGORY_COLORS, type KeyLocation } from '@/config/mapConfig';
 
 const MAP_LAYERS = [
+  { id: 'interactive' as const, label: 'Interactive' },
   { id: 'trails' as const, label: 'Property & Trails' },
   { id: 'base' as const, label: 'Base Camp' },
 ];
