@@ -19,14 +19,18 @@ export function Admin() {
         </h1>
 
         <Tabs defaultValue="gate" className="w-full">
-          <TabsList className="w-full grid grid-cols-5 mb-4">
+          <TabsList className="w-full grid grid-cols-6 mb-4">
             <TabsTrigger value="gate" className="text-xs gap-1">
               <Search size={14} />
               Gate
             </TabsTrigger>
             <TabsTrigger value="calendar" className="text-xs gap-1">
               <Calendar size={14} />
-              Calendar
+              Cal
+            </TabsTrigger>
+            <TabsTrigger value="events" className="text-xs gap-1">
+              <PartyPopper size={14} />
+              Events
             </TabsTrigger>
             <TabsTrigger value="roster" className="text-xs gap-1">
               <Users size={14} />
