@@ -47,20 +47,9 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
-      // First check for a PMA/JotForm record.
-      // If found, always start in claim mode.
-      // If an auth account already exists, handleClaim will gracefully switch to login.
-      const { data: jotformMatch, error: jotformError } = await supabase
-        .from('jotform_submissions')
-        .select('*')
-        .eq('email', normalizedEmail)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (jotformError) {
-        console.error('JotForm lookup error:', jotformError);
-      }
+      // Use secure RPC to check if a JotForm submission exists (no PII exposed)
+      const { data: hasJotform } = await supabase
+        .rpc('jotform_email_exists', { _email: normalizedEmail });
 
       // Check if a Supabase auth account already exists for this email
       // by attempting a sign-in with a dummy password
@@ -70,16 +59,13 @@ export function LoginModal({ open, onOpenChange, postJotform = false }: LoginMod
       });
 
       // "Invalid login credentials" means an account EXISTS (wrong password, but account is real)
-      // Any other error (or no error, which shouldn't happen) means no account
       const accountExists = probeError?.message === 'Invalid login credentials';
 
       if (accountExists) {
         // Account already created — go straight to login
-        if (jotformMatch) setJotformData(jotformMatch);
         setMode('login');
-      } else if (jotformMatch) {
+      } else if (hasJotform) {
         // PMA member but no account yet — claim flow
-        setJotformData(jotformMatch);
         setMode('claim');
       } else {
         // No JotForm record, no account — still show login (they might need to join first)
