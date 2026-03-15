@@ -36,7 +36,7 @@ interface PaymentFormProps {
 
 // Public client key — safe to include in frontend
 const AUTHNET_CLIENT_KEY = '8xbuZ89TPCkGDa946H7dvAht8L5czK3H4G78XpWCPktb6q723hc2ycSJh67h8YjA';
-const AUTHNET_API_LOGIN_ID = '3Lf94JvBr4J';
+const AUTHNET_API_LOGIN_ID = '6s87dAMb6VH';
 
 export function PaymentForm({ amount, onPaymentSuccess, loading }: Omit<PaymentFormProps, 'onBack'>) {
   const [cardNumber, setCardNumber] = useState('');
