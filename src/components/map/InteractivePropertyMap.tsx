@@ -9,11 +9,8 @@ import {
   type KeyLocation,
   type LocationCategory,
 } from '@/config/mapConfig';
-
-// Fix Leaflet default icon issue with bundlers
 import 'leaflet/dist/leaflet.css';
 
-// Create emoji-based markers
 function createEmojiIcon(emoji: string, category: LocationCategory) {
   const color = CATEGORY_COLORS[category];
   return L.divIcon({
@@ -34,7 +31,6 @@ function createEmojiIcon(emoji: string, category: LocationCategory) {
   });
 }
 
-// User location dot
 const userLocationIcon = L.divIcon({
   className: 'user-location-marker',
   html: `<div class="user-location-dot"></div>`,
@@ -42,20 +38,39 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [11, 11],
 });
 
-// Sub-component: recenter map
-function RecenterButton({ position }: { position: [number, number] | null }) {
+/* ── Inner components that use useMap ── */
+
+function ZoomControls() {
   const map = useMap();
-  const handleClick = useCallback(() => {
-    if (position) {
-      map.flyTo(position, 17, { duration: 0.8 });
-    }
-  }, [map, position]);
+  return (
+    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
+      <button
+        className="w-9 h-9 rounded-lg bg-white/95 shadow border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-white active:scale-95 transition-transform"
+        style={{ color: 'var(--ea-midnight)' }}
+        onClick={() => map.zoomIn()}
+      >+</button>
+      <button
+        className="w-9 h-9 rounded-lg bg-white/95 shadow border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-white active:scale-95 transition-transform"
+        style={{ color: 'var(--ea-midnight)' }}
+        onClick={() => map.zoomOut()}
+      >−</button>
+    </div>
+  );
+}
 
-  if (!position) return null;
+function FlyToHandler({ target }: { target: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.flyTo(target, 18, { duration: 0.6 });
+  }, [target, map]);
+  return null;
+}
 
+function RecenterControl({ position }: { position: [number, number] }) {
+  const map = useMap();
   return (
     <button
-      onClick={handleClick}
+      onClick={() => map.flyTo(position, 17, { duration: 0.8 })}
       className="absolute bottom-4 right-3 z-[1000] w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
       title="Center on my location"
     >
@@ -64,16 +79,7 @@ function RecenterButton({ position }: { position: [number, number] | null }) {
   );
 }
 
-// Sub-component: fly to location from legend
-function FlyToHandler({ target }: { target: [number, number] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (target) {
-      map.flyTo(target, 18, { duration: 0.6 });
-    }
-  }, [target, map]);
-  return null;
-}
+/* ── Main component ── */
 
 interface InteractivePropertyMapProps {
   mapLayer: 'trails' | 'base';
@@ -97,33 +103,23 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
     }
     setGpsActive(true);
     setGpsError(null);
-
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         setUserPosition([pos.coords.latitude, pos.coords.longitude]);
         setAccuracy(pos.coords.accuracy);
       },
       (err) => {
-        console.warn('GPS error:', err.message);
-        if (err.code === 1) {
-          setGpsError('Enable location access in your browser settings to see your position');
-        }
+        if (err.code === 1) setGpsError('Enable location in browser settings to see your position');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
     );
   }, []);
 
   useEffect(() => {
-    // Auto-start GPS if permission was previously granted
-    navigator.permissions?.query({ name: 'geolocation' }).then((result) => {
-      if (result.state === 'granted') {
-        startGps();
-      }
-    }).catch(() => { /* permissions API not supported */ });
-
-    return () => {
-      if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
-    };
+    navigator.permissions?.query({ name: 'geolocation' }).then((r) => {
+      if (r.state === 'granted') startGps();
+    }).catch(() => {});
+    return () => { if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current); };
   }, [startGps]);
 
   return (
@@ -137,28 +133,15 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
         zoomControl={false}
         attributionControl={false}
       >
-        {/* Base tile layer at low opacity for road context */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          opacity={0.12}
-        />
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" opacity={0.12} />
+        <ImageOverlay url={imageUrl} bounds={MAP_CONFIG.imageBounds} opacity={0.92} />
 
-        {/* Illustrated property map overlay */}
-        <ImageOverlay
-          url={imageUrl}
-          bounds={MAP_CONFIG.imageBounds}
-          opacity={0.92}
-        />
-
-        {/* Key location markers */}
         {KEY_LOCATIONS.map((loc) => (
           <Marker
             key={loc.id}
             position={loc.coords}
             icon={createEmojiIcon(loc.icon, loc.category)}
-            eventHandlers={{
-              click: () => onSelectLocation?.(loc),
-            }}
+            eventHandlers={{ click: () => onSelectLocation?.(loc) }}
           >
             <Popup className="custom-map-popup" closeButton={false}>
               <div style={{ minWidth: 140 }}>
@@ -173,28 +156,21 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
           </Marker>
         ))}
 
-        {/* User location */}
         {userPosition && (
           <>
-            <Circle
-              center={userPosition}
-              radius={Math.min(accuracy, 200)}
-              pathOptions={{
-                color: 'rgba(66,133,244,0.3)',
-                fillColor: 'rgba(66,133,244,0.1)',
-                fillOpacity: 0.5,
-                weight: 1,
-              }}
-            />
+            <Circle center={userPosition} radius={Math.min(accuracy, 200)}
+              pathOptions={{ color: 'rgba(66,133,244,0.3)', fillColor: 'rgba(66,133,244,0.1)', fillOpacity: 0.5, weight: 1 }} />
             <Marker position={userPosition} icon={userLocationIcon} />
           </>
         )}
 
         <FlyToHandler target={flyToCoords ?? null} />
+        <ZoomControls />
+        {gpsActive && userPosition && <RecenterControl position={userPosition} />}
       </MapContainer>
 
-      {/* GPS button */}
-      {!gpsActive ? (
+      {/* GPS start button (shown before GPS is active) */}
+      {!gpsActive && (
         <button
           onClick={startGps}
           className="absolute bottom-4 right-3 z-[1000] w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-transform"
@@ -202,27 +178,13 @@ export function InteractivePropertyMap({ mapLayer, onSelectLocation, flyToCoords
         >
           <Navigation size={18} className="text-gray-500" />
         </button>
-      ) : (
-        <RecenterButton position={userPosition} />
       )}
 
-      {/* GPS error toast */}
       {gpsError && (
         <div className="absolute bottom-16 left-3 right-3 z-[1000] bg-white/95 rounded-lg px-3 py-2 shadow-md border border-gray-200">
           <p className="text-[11px] text-gray-600 text-center">{gpsError}</p>
         </div>
       )}
-
-      {/* Zoom controls */}
-      <MapContainer
-        center={MAP_CONFIG.center}
-        zoom={MAP_CONFIG.defaultZoom}
-        // This is a dummy — we embed zoom inside the real MapContainer above
-        // Removing the orphan ZoomButton block entirely
-        className="hidden"
-      >
-        <></>
-      </MapContainer>
     </div>
   );
 }
