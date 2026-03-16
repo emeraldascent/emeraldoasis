@@ -19,29 +19,56 @@ function getBadgeStatus(member: Member): BadgeStatus {
   return 'active';
 }
 
+interface JotformResult {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  license_plate: string | null;
+  photo_url: string | null;
+  pma_agreed: boolean;
+  membership_tier: string | null;
+}
+
 export function GateCheck() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Member[]>([]);
+  const [jotformResults, setJotformResults] = useState<JotformResult[]>([]);
   const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set());
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
+      setJotformResults([]);
       return;
     }
 
     const timeout = setTimeout(async () => {
       setSearching(true);
       const searchTerm = `%${query}%`;
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
-        .limit(10);
+      
+      const [membersRes, jotformRes] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
+          .limit(10),
+        supabase
+          .from('jotform_submissions')
+          .select('id, first_name, last_name, email, phone, license_plate, photo_url, pma_agreed, membership_tier')
+          .is('matched_member_id', null)
+          .eq('pma_agreed', true)
+          .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
+          .limit(10),
+      ]);
 
-      if (!error && data) {
-        setResults(data as Member[]);
+      if (!membersRes.error && membersRes.data) {
+        setResults(membersRes.data as Member[]);
+      }
+      if (!jotformRes.error && jotformRes.data) {
+        setJotformResults(jotformRes.data as JotformResult[]);
       }
       setSearching(false);
     }, 300);
@@ -137,9 +164,41 @@ export function GateCheck() {
             </div>
           );
         })}
+
+        {/* JotForm-only PMA results */}
+        {jotformResults.map((jf) => (
+          <div key={`jf-${jf.id}`} className="p-4 rounded-xl border border-amber-200 bg-white shadow-sm">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-16 h-16">
+                <AvatarImage src={jf.photo_url ?? undefined} />
+                <AvatarFallback className="text-lg font-bold text-white bg-amber-700">
+                  {jf.first_name?.[0] || '?'}{jf.last_name?.[0] || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-lg font-bold" style={{ color: 'var(--ea-midnight)' }}>
+                  {jf.first_name} {jf.last_name}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Badge className="text-[10px] font-bold bg-amber-600">
+                    PMA ONLY
+                  </Badge>
+                  <span className="text-xs text-gray-500">{jf.membership_tier || 'No tier'}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-400">
+                  {jf.license_plate && <span>🚗 {jf.license_plate}</span>}
+                  <span>· No app account</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-amber-600 mt-2 text-center">
+              ⚠ PMA signed via JotForm — no app account yet
+            </p>
+          </div>
+        ))}
       </div>
 
-      {query.length >= 2 && results.length === 0 && !searching && (
+      {query.length >= 2 && results.length === 0 && jotformResults.length === 0 && !searching && (
         <p className="text-sm text-gray-400 text-center py-8">No members found</p>
       )}
     </div>

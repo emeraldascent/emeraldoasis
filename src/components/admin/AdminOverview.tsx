@@ -32,12 +32,19 @@ export function AdminOverview() {
         .eq('booking_date', todayStr)
         .eq('status', 'confirmed');
 
-      // Active members
+      // Active members (from members table)
       const { count: activeCount } = await supabase
         .from('members')
         .select('*', { count: 'exact', head: true })
         .lte('membership_start', todayStr)
         .gte('membership_end', todayStr);
+
+      // JotForm PMA members not yet matched to a member record
+      const { count: unmatchedJotformCount } = await supabase
+        .from('jotform_submissions')
+        .select('*', { count: 'exact', head: true })
+        .is('matched_member_id', null)
+        .eq('pma_agreed', true);
 
       // Expiring this week
       const { count: expiringCount } = await supabase
@@ -48,7 +55,7 @@ export function AdminOverview() {
 
       setStats({
         todayBookings: bookingCount ?? 0,
-        activeMembers: activeCount ?? 0,
+        activeMembers: (activeCount ?? 0) + (unmatchedJotformCount ?? 0),
         expiringThisWeek: expiringCount ?? 0,
       });
       setLoading(false);
