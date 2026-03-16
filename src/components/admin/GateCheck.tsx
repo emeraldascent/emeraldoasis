@@ -164,9 +164,8 @@ export function GateCheck() {
             </div>
           );
         })}
-      </div>
 
-      {/* JotForm-only PMA results */}
+        {/* JotForm-only PMA results */}
         {jotformResults.map((jf) => (
           <div key={`jf-${jf.id}`} className="p-4 rounded-xl border border-amber-200 bg-white shadow-sm">
             <div className="flex items-center gap-3">
