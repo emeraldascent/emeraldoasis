@@ -214,7 +214,7 @@ export function MemberPassSection({
           style={{ color: 'var(--ea-midnight)' }}
         >
           <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-          Member Passes
+          Silver / Gold Passes
         </h2>
         {renderTierCards()}
       </div>
