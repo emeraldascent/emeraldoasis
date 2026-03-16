@@ -189,7 +189,7 @@ export function MemberPassSection({
           style={{ color: 'var(--ea-midnight)' }}
         >
           <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-          Member Passes
+          Silver / Gold Passes
           <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600">
             Expired
           </span>
