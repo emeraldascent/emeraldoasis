@@ -44,6 +44,7 @@ interface TodayBooking {
 }
 
 type Filter = 'all' | 'active' | 'expired' | 'jotform_only';
+type TierFilter = 'all' | 'weekly' | 'monthly' | 'seasonal' | 'annual';
 
 export function MemberRoster() {
   const [members, setMembers] = useState<Member[]>([]);
