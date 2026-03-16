@@ -148,21 +148,39 @@ export function MemberRoster() {
       return true;
     });
 
-    const filteredJotform = (filter === 'all' || filter === 'jotform_only' || filter === 'active')
-      ? jotformOnly.filter((j) => {
-          if (tierFilter !== 'all' && j.membership_tier !== tierFilter) return false;
-          if (q) {
-            const fullName = `${j.first_name} ${j.last_name}`.toLowerCase();
-            return fullName.includes(q) || j.email.toLowerCase().includes(q) ||
-              (j.license_plate?.toLowerCase().includes(q) ?? false) || j.phone.includes(q);
-          }
-          return true;
-        })
-      : [];
+    const filteredJotform = jotformOnly.filter((j) => {
+      if (tierFilter !== 'all' && j.membership_tier !== tierFilter) return false;
+      const expDate = getJotformExpiration(j);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isExpired = expDate ? expDate < today : false;
+
+      if (filter === 'expired' && !isExpired) return false;
+      if (filter === 'active' && isExpired) return false;
+      if (filter === 'jotform_only') return true;
+      if (filter === 'expired') return true;
+      if (filter === 'active') return true;
+      if (filter === 'all') return true;
+      return false;
+    }).filter((j) => {
+      if (q) {
+        const fullName = `${j.first_name} ${j.last_name}`.toLowerCase();
+        return fullName.includes(q) || j.email.toLowerCase().includes(q) ||
+          (j.license_plate?.toLowerCase().includes(q) ?? false) || j.phone.includes(q);
+      }
+      return true;
+    });
 
     return { filteredMembers, filteredJotform };
   }, [members, jotformOnly, filter, tierFilter, search]);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiredJotformCt = jotformOnly.filter((j) => {
+    const exp = getJotformExpiration(j);
+    return exp ? exp < today : false;
+  }).length;
+  const activeJotformCt = jotformOnly.length - expiredJotformCt;
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
@@ -241,8 +259,8 @@ export function MemberRoster() {
       <div className="flex gap-2 flex-wrap">
         {([
           ['all', `All (${members.length + jotformCt})`],
-          ['active', `Active (${activeCt + jotformCt})`],
-          ['expired', `Expired (${expiredCt})`],
+          ['active', `Active (${activeCt + activeJotformCt})`],
+          ['expired', `Expired (${expiredCt + expiredJotformCt})`],
           ['jotform_only', `PMA Only (${jotformCt})`],
         ] as [Filter, string][]).map(([key, label]) => (
           <button
