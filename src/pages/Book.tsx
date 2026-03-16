@@ -12,6 +12,7 @@ interface ServiceCard {
   description: string;
   price: string;
   icon: React.ReactNode;
+  imageUrl?: string;
   isFreeWelcome?: boolean;
 }
 
@@ -33,13 +34,13 @@ const MEMBER_PASSES: ServiceCard[] = [
 ];
 
 const CAMPSITES: ServiceCard[] = [
-  { id: 11, name: 'Campsite 3', description: 'Creekside primitive site', price: '$30/night', icon: <Tent size={18} /> },
-  { id: 12, name: 'Campsite 4', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
-  { id: 13, name: 'Campsite 5', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
-  { id: 14, name: 'Campsite 6', description: 'Wooded primitive site', price: '$30/night', icon: <Tent size={18} /> },
-  { id: 9, name: 'Campsite 7 — Social', description: 'Shared community site (1 spot)', price: '$20/night', icon: <Tent size={18} /> },
-  { id: 8, name: 'Campsite 7 — Group Reserve', description: 'Exclusive group use, up to 5 tents', price: '$60/night', icon: <Users size={18} /> },
-  { id: 10, name: 'Creekside Group #2', description: 'Group creekside camping', price: '$50/night', icon: <Users size={18} /> },
+  { id: 11, name: 'Terrace #3', description: 'Meadow corner · creek views · forest trail access', price: '$25/night', icon: <Tent size={18} />, imageUrl: '/photos/campsite-terrace3.jpg' },
+  { id: 12, name: 'Terrace #4', description: 'Between trees along meadow · creek views', price: '$28/night', icon: <Tent size={18} />, imageUrl: '/photos/campsite-terrace4.jpg' },
+  { id: 13, name: 'Terrace #5', description: 'Above meadow · more privacy · forest trails', price: '$30/night', icon: <Tent size={18} />, imageUrl: '/photos/campsite-terrace5.jpg' },
+  { id: 14, name: 'Secluded Site #6', description: 'Forest hollow · nestled in the woods', price: '$28/night', icon: <Tent size={18} />, imageUrl: '/photos/campsite-secluded6.jpg' },
+  { id: 9, name: 'Creekside #7 — Social', description: 'Shared community site · 1 spot', price: '$20/night', icon: <Tent size={18} />, imageUrl: '/photos/campsite-creekside7.jpg' },
+  { id: 8, name: 'Creekside #7 — Group', description: 'Exclusive group use · up to 5 tents', price: '$60/night', icon: <Users size={18} />, imageUrl: '/photos/campsite-creekside7.jpg' },
+  { id: 10, name: 'Creekside Group #2', description: 'Group creekside camping', price: '$45/night', icon: <Users size={18} />, imageUrl: '/photos/campsite-creekside2.jpg' },
 ];
 
 interface BookProps {
@@ -274,12 +275,20 @@ function ServiceSection({
             onClick={() => onSelect(service)}
             className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
           >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
-            >
-              {service.icon}
-            </div>
+            {service.imageUrl ? (
+              <img
+                src={service.imageUrl}
+                alt={service.name}
+                className="w-12 h-12 rounded-lg object-cover shrink-0"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+              >
+                {service.icon}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
                 {service.name}
