@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMember } from '@/hooks/useMember';
-import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 interface Event {
   id: string;
