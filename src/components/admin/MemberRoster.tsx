@@ -334,12 +334,18 @@ export function MemberRoster() {
           })}
 
           {/* JotForm-only PMA members */}
-          {filtered.filteredJotform.map((jf) => (
-            <div key={`jf-${jf.id}`} className="p-3 rounded-xl bg-white border border-amber-200">
+          {filtered.filteredJotform.map((jf) => {
+            const jfExpDate = getJotformExpiration(jf);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const jfExpired = jfExpDate ? jfExpDate < today : false;
+            const jfEndStr = jfExpDate ? jfExpDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+            return (
+            <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border ${jfExpired ? 'border-red-200' : 'border-amber-200'}`}>
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={jf.photo_url ?? undefined} />
-                  <AvatarFallback className="text-xs font-bold text-amber-900 bg-amber-300">
+                  <AvatarFallback className={`text-xs font-bold ${jfExpired ? 'text-white bg-red-900' : 'text-amber-900 bg-amber-300'}`}>
                     {jf.first_name?.[0] || '?'}{jf.last_name?.[0] || '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -348,11 +354,11 @@ export function MemberRoster() {
                     {jf.first_name} {jf.last_name}
                   </p>
                   <p className="text-[11px] text-gray-400">
-                    {jf.email} · {jf.phone}
+                    {jf.membership_tier || 'No tier'} · {jfExpired ? 'Expired' : 'Expires'} {jfEndStr || 'N/A'}
                   </p>
                 </div>
-                <Badge className="text-[9px] shrink-0 bg-amber-400 text-amber-900">
-                  PMA ONLY
+                <Badge className={`text-[9px] shrink-0 ${jfExpired ? 'bg-red-100 text-red-700' : 'bg-amber-400 text-amber-900'}`}>
+                  {jfExpired ? 'EXPIRED' : 'PMA ONLY'}
                 </Badge>
               </div>
               {jf.license_plate && (
@@ -361,6 +367,8 @@ export function MemberRoster() {
                 </p>
               )}
             </div>
+            );
+          })}
           ))}
 
           {totalResults === 0 && (
