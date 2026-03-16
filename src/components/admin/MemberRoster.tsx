@@ -174,6 +174,13 @@ export function MemberRoster() {
     return { filteredMembers, filteredJotform };
   }, [members, jotformOnly, filter, tierFilter, search]);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiredJotformCt = jotformOnly.filter((j) => {
+    const exp = getJotformExpiration(j);
+    return exp ? exp < today : false;
+  }).length;
+  const activeJotformCt = jotformOnly.length - expiredJotformCt;
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
