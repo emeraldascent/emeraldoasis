@@ -243,8 +243,7 @@ export function MemberRoster() {
 
                   <Badge
                     variant={isActive ? 'default' : 'destructive'}
-                    className="text-[9px] shrink-0"
-                    style={isActive ? { backgroundColor: '#1B5E20' } : undefined}
+                    className={`text-[9px] shrink-0 ${isActive ? 'bg-green-900' : ''}`}
                   >
                     {isActive ? 'ACTIVE' : 'EXPIRED'}
                   </Badge>
