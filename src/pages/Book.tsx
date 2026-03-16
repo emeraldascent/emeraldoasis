@@ -261,6 +261,11 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
           </div>
         )}
 
+<MemberPassSection
+          member={member}
+          onSubscriptionChange={onRefreshMember}
+        />
+
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Sun size={16} style={{ color: 'var(--ea-emerald)' }} />
@@ -323,11 +328,6 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
             })}
           </div>
         </div>
-
-        <MemberPassSection
-          member={member}
-          onSubscriptionChange={onRefreshMember}
-        />
 
         <div>
           <div className="flex items-center gap-2 mb-1">
