@@ -42,12 +42,21 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
-        {/* Logo header */}
-        <div className="flex items-center justify-center gap-2 pb-1">
-          <img src={LOGO_URL} alt="Emerald Oasis" className="w-8 h-8 rounded-full object-cover" />
-          <span className="text-sm font-semibold font-serif text-ea-midnight">
-            Emerald Oasis
-          </span>
+        {/* Property photo banner */}
+        <div className="relative rounded-xl overflow-hidden h-32">
+          <img
+            src="/photos/spring-water.jpg"
+            alt="Mandala Springs"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-3">
+            <div className="flex items-center gap-2">
+              <img src={LOGO_URL} alt="Emerald Oasis" className="w-7 h-7 rounded-full object-cover border border-white/40" />
+              <span className="text-sm font-semibold font-serif text-white">
+                Emerald Oasis
+              </span>
+            </div>
+          </div>
         </div>
 
         <MemberBadge member={member} badgeStatus={badgeStatus} />

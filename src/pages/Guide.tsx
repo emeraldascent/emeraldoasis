@@ -345,6 +345,13 @@ function RuleGroup({ heading, sections }: { heading: string; sections: RuleSecti
 export function Guide() {
   const navigate = useNavigate();
 
+  const GUIDE_PHOTOS = [
+    { src: '/photos/creek-rocks.jpg', alt: 'Mineral Creek & boulders' },
+    { src: '/photos/forest-camp.jpg', alt: 'Forest campsite' },
+    { src: '/photos/sauna.jpg', alt: 'Cedar sauna' },
+    { src: '/photos/terrace.jpg', alt: 'Terrace gathering space' },
+  ];
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-md mx-auto px-4 py-5 space-y-5">
@@ -352,14 +359,26 @@ export function Guide() {
         {/* Header */}
         <div className="text-center">
           <h1
-            className="text-lg mb-0.5"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif", color: 'var(--ea-midnight)' }}
+            className="text-lg mb-0.5 font-serif text-ea-midnight"
           >
             Explore
           </h1>
           <p className="text-xs text-muted-foreground">
             Emerald Oasis @ Mandala Springs
           </p>
+        </div>
+
+        {/* Photo Gallery */}
+        <div className="grid grid-cols-2 gap-2 rounded-xl overflow-hidden">
+          {GUIDE_PHOTOS.map((photo) => (
+            <img
+              key={photo.src}
+              src={photo.src}
+              alt={photo.alt}
+              className="w-full h-28 object-cover"
+              loading="lazy"
+            />
+          ))}
         </div>
 
         {/* Map link */}

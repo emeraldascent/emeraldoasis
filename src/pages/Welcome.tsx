@@ -5,13 +5,19 @@ import { LoginModal } from '../components/auth/LoginModal';
 import { useMember } from '../hooks/useMember';
 
 const LOGO_URL = '/ea-logo.jpg';
-const HERO_BG =
-  'https://images.editor.website/1e8f26a8520008254993a388bf2e8b1b1fd494438000ba1f65a7540480f93584/DSC00078_1749760850.JPG';
+
+const HERO_PHOTOS = [
+  '/photos/creek-rocks.jpg',
+  '/photos/forest-camp.jpg',
+  '/photos/spring-water.jpg',
+  '/photos/terrace.jpg',
+];
 
 export function Welcome() {
   const navigate = useNavigate();
   const { user } = useMember();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
 
   const handleBook = () => {
     if (user) {
@@ -25,15 +31,16 @@ export function Welcome() {
     <div className="min-h-screen flex flex-col">
       {/* Hero with background image */}
       <div
-        className="flex-1 flex flex-col items-center justify-center px-6 py-16 relative"
+        className="flex-1 flex flex-col items-center justify-center px-6 py-16 relative overflow-hidden"
         style={{
-          backgroundImage: `linear-gradient(160deg, rgba(19,105,75,0.85) 0%, rgba(40,140,111,0.85) 100%), url("${HERO_BG}")`,
+          backgroundImage: `linear-gradient(160deg, rgba(19,105,75,0.75) 0%, rgba(40,140,111,0.75) 100%), url("${HERO_PHOTOS[heroIdx]}")`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
+          transition: 'background-image 0.6s ease-in-out',
         }}
       >
         {/* Logo */}
-        <div className="w-28 h-28 rounded-full overflow-hidden bg-[var(--ea-birch)] mb-4 border-2 border-white/30 shadow-lg flex items-center justify-center p-1">
+        <div className="w-28 h-28 rounded-full overflow-hidden bg-ea-birch mb-4 border-2 border-white/30 shadow-lg flex items-center justify-center p-1">
           <img
             src={LOGO_URL}
             alt="Emerald Oasis"
@@ -42,34 +49,41 @@ export function Welcome() {
         </div>
 
         <h1
-          className="text-[22px] text-white text-center mb-2"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+          className="text-[22px] text-white text-center mb-2 font-serif"
         >
           Welcome to the Oasis
         </h1>
-        <p className="text-xs text-white/85 text-center mb-8">
+        <p className="text-xs text-white/85 text-center mb-5">
           Private wellness sanctuary in the Blue Ridge Mountains
         </p>
+
+        {/* Photo dots */}
+        <div className="flex gap-1.5 mb-6">
+          {HERO_PHOTOS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setHeroIdx(i)}
+              className={`w-2 h-2 rounded-full transition-all ${i === heroIdx ? 'bg-white scale-110' : 'bg-white/40'}`}
+            />
+          ))}
+        </div>
 
         <div className="w-full max-w-xs space-y-2.5">
           <Button
             onClick={() => navigate('/join')}
-            className="w-full h-12 text-white font-medium rounded-lg"
-            style={{ backgroundColor: 'var(--ea-emerald)' }}
+            className="w-full h-12 text-white font-medium rounded-lg bg-ea-emerald hover:bg-ea-emerald/90"
           >
             Become a Member
           </Button>
           <Button
             onClick={() => setLoginOpen(true)}
-            className="w-full h-12 font-medium rounded-lg"
-            style={{ backgroundColor: 'white', color: 'var(--ea-midnight)' }}
+            className="w-full h-12 font-medium rounded-lg bg-white text-ea-midnight hover:bg-white/90"
           >
             Sign In
           </Button>
           <Button
             onClick={handleBook}
-            className="w-full h-12 text-white font-medium rounded-lg"
-            style={{ backgroundColor: 'var(--ea-spirulina)' }}
+            className="w-full h-12 text-white font-medium rounded-lg bg-ea-spirulina hover:bg-ea-spirulina/90"
           >
             Book an Experience
           </Button>
