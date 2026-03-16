@@ -79,10 +79,22 @@ export function MemberRoster() {
     }
   };
 
-  const filtered = members.filter((m) => {
-    if (filter === 'all') return true;
-    return getBadgeStatus(m) === filter;
-  });
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return members.filter((m) => {
+      if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
+      if (q) {
+        const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+        const matchesSearch =
+          fullName.includes(q) ||
+          m.email.toLowerCase().includes(q) ||
+          (m.license_plate?.toLowerCase().includes(q) ?? false) ||
+          m.phone.includes(q);
+        if (!matchesSearch) return false;
+      }
+      return true;
+    });
+  }, [members, filter, search]);
 
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
