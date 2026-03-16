@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, Pencil, X } from 'lucide-react';
 
 interface Announcement {
   id: string;
@@ -14,10 +14,13 @@ interface Announcement {
   created_at: string;
 }
 
+const emojiOptions = ['📢', '🚨', '🎉', '🌿', '⚠️', '💧', '🔥', '❄️', '☀️', '🌙'];
+
 export function AdminAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [emoji, setEmoji] = useState('📢');
@@ -34,18 +37,40 @@ export function AdminAnnouncements() {
 
   useEffect(() => { fetchAnnouncements(); }, []);
 
-  const handleCreate = async () => {
-    if (!title.trim()) return;
-    await supabase.from('announcements').insert({
-      title: title.trim(),
-      body: body.trim(),
-      emoji,
-    } as any);
+  const resetForm = () => {
     setTitle('');
     setBody('');
     setEmoji('📢');
     setShowForm(false);
+    setEditingId(null);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) return;
+    if (editingId) {
+      await supabase.from('announcements').update({
+        title: title.trim(),
+        body: body.trim(),
+        emoji,
+        updated_at: new Date().toISOString(),
+      } as any).eq('id', editingId);
+    } else {
+      await supabase.from('announcements').insert({
+        title: title.trim(),
+        body: body.trim(),
+        emoji,
+      } as any);
+    }
+    resetForm();
     fetchAnnouncements();
+  };
+
+  const handleEdit = (a: Announcement) => {
+    setEditingId(a.id);
+    setTitle(a.title);
+    setBody(a.body);
+    setEmoji(a.emoji);
+    setShowForm(true);
   };
 
   const handleToggle = async (a: Announcement) => {
@@ -61,25 +86,29 @@ export function AdminAnnouncements() {
     fetchAnnouncements();
   };
 
-  const emojiOptions = ['📢', '🚨', '🎉', '🌿', '⚠️', '💧', '🔥', '❄️', '☀️', '🌙'];
-
   if (loading) return <p className="text-sm text-gray-400 text-center py-8">Loading...</p>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-ea-midnight">Announcements ({announcements.length})</p>
-        <Button
-          size="sm"
-          onClick={() => setShowForm(!showForm)}
-          className="text-[10px] h-7 bg-ea-emerald hover:bg-ea-emerald/90"
-        >
-          <Plus size={12} className="mr-1" /> New
-        </Button>
+        {!showForm && (
+          <Button
+            size="sm"
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="text-[10px] h-7 bg-ea-emerald hover:bg-ea-emerald/90"
+          >
+            <Plus size={12} className="mr-1" /> New
+          </Button>
+        )}
       </div>
 
       {showForm && (
         <div className="p-3 rounded-xl border border-border bg-white space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold text-gray-500">{editingId ? 'Edit Announcement' : 'New Announcement'}</p>
+            <button onClick={resetForm} className="p-1 rounded hover:bg-gray-100"><X size={14} className="text-gray-400" /></button>
+          </div>
           <div className="flex gap-1.5 flex-wrap">
             {emojiOptions.map((e) => (
               <button
@@ -105,14 +134,9 @@ export function AdminAnnouncements() {
             onChange={(e) => setBody(e.target.value)}
             className="w-full text-xs border border-border rounded-lg px-3 py-2 min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-ea-emerald"
           />
-          <div className="flex gap-2">
-            <Button size="sm" onClick={handleCreate} className="text-[10px] h-7 bg-ea-emerald hover:bg-ea-emerald/90 flex-1">
-              Publish
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowForm(false)} className="text-[10px] h-7">
-              Cancel
-            </Button>
-          </div>
+          <Button size="sm" onClick={handleSave} className="text-[10px] h-7 bg-ea-emerald hover:bg-ea-emerald/90 w-full">
+            {editingId ? 'Save Changes' : 'Publish'}
+          </Button>
         </div>
       )}
 
@@ -135,6 +159,13 @@ export function AdminAnnouncements() {
               </p>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleEdit(a)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Edit"
+              >
+                <Pencil size={14} className="text-gray-400" />
+              </button>
               <button
                 onClick={() => handleToggle(a)}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
