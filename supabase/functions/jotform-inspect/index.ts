@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   }
 
   // Use a known submission ID to inspect the structure
-  const submissionId = "6290086033717094602";
+  const submissionId = "6490876490123361408";
 
   const jfRes = await fetch(
     `https://api.jotform.com/submission/${submissionId}?apiKey=${jotformApiKey}`
