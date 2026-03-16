@@ -12,6 +12,7 @@ interface ServiceCard {
   description: string;
   price: string;
   icon: React.ReactNode;
+  imageUrl?: string;
   isFreeWelcome?: boolean;
 }
 
