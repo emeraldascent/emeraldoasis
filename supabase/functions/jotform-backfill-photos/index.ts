@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Get all jotform submissions that have a submission_id but no photo_url
     const { data: submissions, error: fetchError } = await supabase
       .from("jotform_submissions")
-      .select("id, jotform_submission_id, email")
+      .select("id, jotform_submission_id, email, matched_member_id")
       .is("photo_url", null)
       .not("jotform_submission_id", "is", null);
 
@@ -50,7 +50,6 @@ Deno.serve(async (req) => {
 
     for (const sub of submissions) {
       try {
-        // Fetch submission from JotForm API
         const jfRes = await fetch(
           `https://api.jotform.com/submission/${sub.jotform_submission_id}?apiKey=${jotformApiKey}`
         );
@@ -66,45 +65,46 @@ Deno.serve(async (req) => {
         const jfData = await jfRes.json();
         const answers = jfData?.content?.answers || {};
 
-        // Find photo/file upload fields
+        // Find photo URL — look for "Member Photo" (qid 25) or any widget/upload with a URL answer
         let photoUrl: string | null = null;
         for (const [_qid, answer] of Object.entries(answers)) {
           const ans = answer as any;
-          const fieldName = (ans.name || "").toLowerCase();
           const fieldText = (ans.text || "").toLowerCase();
+          const fieldName = (ans.name || "").toLowerCase();
 
-          // Look for photo/image/upload fields
-          if (
-            fieldName.includes("photo") ||
-            fieldName.includes("image") ||
-            fieldName.includes("picture") ||
-            fieldName.includes("upload") ||
-            fieldName.includes("headshot") ||
-            fieldText.includes("photo") ||
-            fieldText.includes("image") ||
-            fieldText.includes("picture") ||
-            fieldText.includes("upload") ||
+          // Match "Member Photo" field specifically, or any photo/image widget
+          const isPhotoField =
+            fieldText.includes("member photo") ||
+            fieldText.includes("profile photo") ||
             fieldText.includes("headshot") ||
-            ans.type === "control_fileupload"
-          ) {
-            // File upload answer can be a URL string or array of URLs
-            if (typeof ans.answer === "string" && ans.answer.startsWith("http")) {
+            (fieldText.includes("photo") && !fieldText.includes("license")) ||
+            (fieldName.includes("photo") && !fieldName.includes("license"));
+
+          if (isPhotoField && typeof ans.answer === "string" && ans.answer.startsWith("http")) {
+            photoUrl = ans.answer;
+            break;
+          }
+        }
+
+        // Fallback: look for any control_widget with a jotform uploads URL containing "base64_25"
+        if (!photoUrl) {
+          for (const [_qid, answer] of Object.entries(answers)) {
+            const ans = answer as any;
+            if (
+              ans.type === "control_widget" &&
+              typeof ans.answer === "string" &&
+              ans.answer.includes("jotform.com/uploads") &&
+              !ans.text?.toLowerCase().includes("license") &&
+              !ans.text?.toLowerCase().includes("driver")
+            ) {
               photoUrl = ans.answer;
-              break;
-            }
-            if (Array.isArray(ans.answer) && ans.answer.length > 0) {
-              photoUrl = ans.answer[0];
-              break;
-            }
-            // Sometimes it's in prettyFormat
-            if (typeof ans.prettyFormat === "string" && ans.prettyFormat.startsWith("http")) {
-              photoUrl = ans.prettyFormat;
               break;
             }
           }
         }
 
         if (photoUrl) {
+          // Update jotform_submissions
           const { error: updateError } = await supabase
             .from("jotform_submissions")
             .update({ photo_url: photoUrl })
@@ -117,20 +117,14 @@ Deno.serve(async (req) => {
           } else {
             updated++;
             details.push({ email: sub.email, status: "updated", photo_url: photoUrl });
-            console.log(`Updated photo for ${sub.email}: ${photoUrl}`);
+            console.log(`Updated photo for ${sub.email}`);
 
-            // Also update the matched member record if it exists
-            const { data: jfRecord } = await supabase
-              .from("jotform_submissions")
-              .select("matched_member_id")
-              .eq("id", sub.id)
-              .single();
-
-            if (jfRecord?.matched_member_id) {
+            // Also update matched member record
+            if (sub.matched_member_id) {
               await supabase
                 .from("members")
                 .update({ photo_url: photoUrl })
-                .eq("id", jfRecord.matched_member_id);
+                .eq("id", sub.matched_member_id);
               console.log(`Also updated member photo for ${sub.email}`);
             }
           }
@@ -139,7 +133,7 @@ Deno.serve(async (req) => {
           console.log(`No photo found for ${sub.email}`);
         }
 
-        // Rate limit: JotForm API allows ~100 requests/min
+        // Rate limit: ~700ms between requests
         await new Promise((r) => setTimeout(r, 700));
       } catch (err) {
         console.error(`Error processing ${sub.email}:`, err);
@@ -149,13 +143,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        total: submissions.length,
-        updated,
-        errors,
-        details,
-      }),
+      JSON.stringify({ success: true, total: submissions.length, updated, errors, details }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
