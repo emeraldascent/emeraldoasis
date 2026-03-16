@@ -122,7 +122,10 @@ export function MemberRoster() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return members.filter((m) => {
+    
+    // Filter members
+    const filteredMembers = members.filter((m) => {
+      if (filter === 'jotform_only') return false;
       if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
       if (q) {
         const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
@@ -135,10 +138,25 @@ export function MemberRoster() {
       }
       return true;
     });
-  }, [members, filter, search]);
+
+    // Filter jotform-only members
+    const filteredJotform = (filter === 'all' || filter === 'jotform_only' || filter === 'active')
+      ? jotformOnly.filter((j) => {
+          if (q) {
+            const fullName = `${j.first_name} ${j.last_name}`.toLowerCase();
+            return fullName.includes(q) || j.email.toLowerCase().includes(q) ||
+              (j.license_plate?.toLowerCase().includes(q) ?? false) || j.phone.includes(q);
+          }
+          return true;
+        })
+      : [];
+
+    return { filteredMembers, filteredJotform };
+  }, [members, jotformOnly, filter, search]);
 
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
+  const jotformCt = jotformOnly.length;
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
