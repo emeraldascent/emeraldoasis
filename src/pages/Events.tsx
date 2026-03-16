@@ -438,46 +438,42 @@ export function Events() {
               Your Upcoming Bookings
             </h2>
 
-            
-              <>
-                {upcomingBookings.length === 0 ? (
-                  <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
-                    <span className="text-xl block mb-1">🌿</span>
-                    <p className="text-xs text-gray-400">No upcoming bookings</p>
-                  </div>
-                ) : (
-                  upcomingBookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="bg-white rounded-xl border border-gray-100 p-3"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center bg-blue-50">
-                          <span className="text-[10px] font-bold leading-none text-ea-midnight">
-                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                          </span>
-                          <span className="text-sm font-bold leading-none text-ea-midnight">
-                            {new Date(booking.booking_date + 'T12:00:00').getDate()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate text-ea-midnight">
-                            {booking.service_name}
-                          </p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">
-                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                            {booking.booking_time ? ` · ${formatTime(booking.booking_time)}` : ''}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                          Confirmed
-                        </span>
-                      </div>
+            {upcomingBookings.length === 0 ? (
+              <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
+                <span className="text-xl block mb-1">🌿</span>
+                <p className="text-xs text-gray-400">No upcoming bookings</p>
+              </div>
+            ) : (
+              upcomingBookings.map((booking: MemberBooking) => (
+                <div
+                  key={booking.id}
+                  className="bg-white rounded-xl border border-gray-100 p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center bg-blue-50">
+                      <span className="text-[10px] font-bold leading-none text-ea-midnight">
+                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+                      </span>
+                      <span className="text-sm font-bold leading-none text-ea-midnight">
+                        {new Date(booking.booking_date + 'T12:00:00').getDate()}
+                      </span>
                     </div>
-                  ))
-                )}
-              </>
-            )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate text-ea-midnight">
+                        {booking.service_name}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {booking.booking_time ? ` · ${formatTime(booking.booking_time)}` : ''}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                      Confirmed
+                    </span>
+                  </div>
+                </div>
+              ))
+            )
           </div>
         )}
       </div>
