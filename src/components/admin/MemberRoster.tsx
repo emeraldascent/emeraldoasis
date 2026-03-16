@@ -70,6 +70,8 @@ export function MemberRoster() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedJotform, setSelectedJotform] = useState<JotformMember | null>(null);
 
   useEffect(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
