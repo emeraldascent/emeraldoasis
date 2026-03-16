@@ -321,7 +321,7 @@ export function MemberRoster() {
                     {jf.email} · {jf.phone}
                   </p>
                 </div>
-                <Badge className="text-[9px] shrink-0 bg-amber-600">
+                <Badge className="text-[9px] shrink-0 bg-amber-400 text-amber-900">
                   PMA ONLY
                 </Badge>
               </div>
