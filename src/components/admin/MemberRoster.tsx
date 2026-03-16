@@ -137,10 +137,10 @@ export function MemberRoster() {
     <div className="space-y-4">
       {/* Today's bookings summary */}
       {todayBookings.length > 0 && (
-        <div className="p-3 rounded-xl border border-border" style={{ backgroundColor: '#F0FDF4' }}>
+        <div className="p-3 rounded-xl border border-border bg-green-50">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar size={14} style={{ color: 'var(--ea-emerald)' }} />
-            <p className="text-xs font-bold" style={{ color: 'var(--ea-midnight)' }}>
+            <Calendar size={14} className="text-ea-emerald" />
+            <p className="text-xs font-bold text-ea-midnight">
               Today's Bookings ({todayBookings.length})
             </p>
           </div>
