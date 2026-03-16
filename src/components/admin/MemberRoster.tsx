@@ -151,6 +151,18 @@ export function MemberRoster() {
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
 
+  const expiringMembers = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today);
+    weekOut.setDate(weekOut.getDate() + 7);
+    return members.filter((m) => {
+      const end = new Date(m.membership_end);
+      end.setHours(0, 0, 0, 0);
+      return end >= today && end <= weekOut;
+    });
+  }, [members]);
+
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
     acc[b.member_id].push(b);
