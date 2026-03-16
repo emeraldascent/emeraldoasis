@@ -19,7 +19,6 @@ function getBadgeStatus(member: Member): BadgeStatus {
   return 'active';
 }
 
-// JotForm-only PMA members (no app account yet)
 interface JotformMember {
   id: string;
   first_name: string;
@@ -123,23 +122,17 @@ export function MemberRoster() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     
-    // Filter members
     const filteredMembers = members.filter((m) => {
       if (filter === 'jotform_only') return false;
       if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
       if (q) {
         const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
-        const matchesSearch =
-          fullName.includes(q) ||
-          m.email.toLowerCase().includes(q) ||
-          (m.license_plate?.toLowerCase().includes(q) ?? false) ||
-          m.phone.includes(q);
-        if (!matchesSearch) return false;
+        return fullName.includes(q) || m.email.toLowerCase().includes(q) ||
+          (m.license_plate?.toLowerCase().includes(q) ?? false) || m.phone.includes(q);
       }
       return true;
     });
 
-    // Filter jotform-only members
     const filteredJotform = (filter === 'all' || filter === 'jotform_only' || filter === 'active')
       ? jotformOnly.filter((j) => {
           if (q) {
@@ -166,16 +159,13 @@ export function MemberRoster() {
 
   const handleExport = () => {
     const headers = ['Name', 'Email', 'Phone', 'Tier', 'Expires', 'Status', 'Source'];
-    const rows = filtered.map((m) => [
-      `${m.first_name} ${m.last_name}`,
-      m.email,
-      m.phone,
-      m.membership_tier,
-      m.membership_end,
-      getBadgeStatus(m),
-      m.source,
+    const memberRows = filtered.filteredMembers.map((m) => [
+      `${m.first_name} ${m.last_name}`, m.email, m.phone, m.membership_tier, m.membership_end, getBadgeStatus(m), m.source,
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const jotformRows = filtered.filteredJotform.map((j) => [
+      `${j.first_name} ${j.last_name}`, j.email, j.phone, j.membership_tier || 'PMA', 'N/A', 'PMA Only', 'jotform',
+    ]);
+    const csv = [headers, ...memberRows, ...jotformRows].map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -192,9 +182,10 @@ export function MemberRoster() {
     return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
   };
 
+  const totalResults = filtered.filteredMembers.length + filtered.filteredJotform.length;
+
   return (
     <div className="space-y-4">
-      {/* Today's bookings summary */}
       {todayBookings.length > 0 && (
         <div className="p-3 rounded-xl border border-border bg-green-50">
           <div className="flex items-center gap-2 mb-2">
@@ -221,7 +212,6 @@ export function MemberRoster() {
         </div>
       )}
 
-      {/* Search */}
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
@@ -232,7 +222,6 @@ export function MemberRoster() {
         />
       </div>
 
-      {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
         {([
           ['all', `All (${members.length + jotformCt})`],
@@ -260,27 +249,20 @@ export function MemberRoster() {
         <p className="text-sm text-gray-400 text-center py-8">Loading members...</p>
       ) : (
         <div className="space-y-2">
-          {filtered.map((member) => {
+          {filtered.filteredMembers.map((member) => {
             const status = getBadgeStatus(member);
             const isActive = status === 'active';
             const endDate = new Date(member.membership_end).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
+              month: 'short', day: 'numeric', year: 'numeric',
             });
             const memberBookings = bookingsByMember[member.id];
 
             return (
-              <div
-                key={member.id}
-                className="p-3 rounded-xl bg-white border border-gray-100"
-              >
+              <div key={member.id} className="p-3 rounded-xl bg-white border border-gray-100">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={member.photo_url ?? undefined} />
-                    <AvatarFallback
-                      className={`text-xs font-bold text-white ${isActive ? 'bg-green-900' : 'bg-red-900'}`}
-                    >
+                    <AvatarFallback className={`text-xs font-bold text-white ${isActive ? 'bg-green-900' : 'bg-red-900'}`}>
                       {member.first_name[0]}{member.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -292,7 +274,6 @@ export function MemberRoster() {
                       {member.membership_tier} · Expires {endDate}
                     </p>
                   </div>
-
                   <button
                     onClick={() => handleToggleSubscription(member)}
                     title={`Toggle Oasis Pass Subscription (${member.subscription_active ? 'Active' : 'Inactive'})`}
@@ -300,7 +281,6 @@ export function MemberRoster() {
                   >
                     <Crown size={14} className={member.subscription_active ? 'fill-current' : ''} />
                   </button>
-
                   <Badge
                     variant={isActive ? 'default' : 'destructive'}
                     className={`text-[9px] shrink-0 ${isActive ? 'bg-green-900' : ''}`}
@@ -308,8 +288,6 @@ export function MemberRoster() {
                     {isActive ? 'ACTIVE' : 'EXPIRED'}
                   </Badge>
                 </div>
-
-                {/* Today's bookings for this member */}
                 {memberBookings && memberBookings.length > 0 && (
                   <div className="mt-2 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
                     {memberBookings.map((b) => (
@@ -324,7 +302,38 @@ export function MemberRoster() {
               </div>
             );
           })}
-          {filtered.length === 0 && (
+
+          {/* JotForm-only PMA members */}
+          {filtered.filteredJotform.map((jf) => (
+            <div key={`jf-${jf.id}`} className="p-3 rounded-xl bg-white border border-amber-200">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={jf.photo_url ?? undefined} />
+                  <AvatarFallback className="text-xs font-bold text-white bg-amber-700">
+                    {jf.first_name?.[0] || '?'}{jf.last_name?.[0] || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate text-ea-midnight">
+                    {jf.first_name} {jf.last_name}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    {jf.email} · {jf.phone}
+                  </p>
+                </div>
+                <Badge className="text-[9px] shrink-0 bg-amber-600">
+                  PMA ONLY
+                </Badge>
+              </div>
+              {jf.license_plate && (
+                <p className="text-[10px] text-gray-400 mt-1" style={{ marginLeft: '52px' }}>
+                  🚗 {jf.license_plate}
+                </p>
+              )}
+            </div>
+          ))}
+
+          {totalResults === 0 && (
             <p className="text-sm text-gray-400 text-center py-8">No members found</p>
           )}
         </div>
