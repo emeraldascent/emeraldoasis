@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar, Search, AlertTriangle } from 'lucide-react';
+import { Crown, Calendar, Search } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -121,12 +121,25 @@ export function MemberRoster() {
     }
   };
 
+  const tierDurations: Record<string, number> = {
+    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
+  };
+
+  const getJotformExpiration = (j: JotformMember) => {
+    if (!j.membership_tier || !tierDurations[j.membership_tier]) return null;
+    const start = new Date(j.created_at);
+    const end = new Date(start);
+    end.setDate(end.getDate() + tierDurations[j.membership_tier]);
+    return end;
+  };
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     
-    const filteredMembers = members.filter((m) => {
+    let filteredMembers = members.filter((m) => {
       if (filter === 'jotform_only') return false;
       if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
+      if (tierFilter !== 'all' && m.membership_tier !== tierFilter) return false;
       if (q) {
         const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
         return fullName.includes(q) || m.email.toLowerCase().includes(q) ||
@@ -137,6 +150,7 @@ export function MemberRoster() {
 
     const filteredJotform = (filter === 'all' || filter === 'jotform_only' || filter === 'active')
       ? jotformOnly.filter((j) => {
+          if (tierFilter !== 'all' && j.membership_tier !== tierFilter) return false;
           if (q) {
             const fullName = `${j.first_name} ${j.last_name}`.toLowerCase();
             return fullName.includes(q) || j.email.toLowerCase().includes(q) ||
@@ -147,61 +161,11 @@ export function MemberRoster() {
       : [];
 
     return { filteredMembers, filteredJotform };
-  }, [members, jotformOnly, filter, search]);
+  }, [members, jotformOnly, filter, tierFilter, search]);
 
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
-
-  const tierDurations: Record<string, number> = {
-    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
-  };
-
-  const allExpirations = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const memberExpirations = members.map((m) => {
-      const end = new Date(m.membership_end);
-      end.setHours(0, 0, 0, 0);
-      const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        id: m.id,
-        name: `${m.first_name} ${m.last_name}`,
-        tier: m.membership_tier,
-        expiresDate: end,
-        daysUntil,
-        status: daysUntil < 0 ? 'expired' as const : 'active' as const,
-        source: 'app' as const,
-      };
-    });
-
-    const jotformExpirations = jotformOnly
-      .filter((j) => j.membership_tier && tierDurations[j.membership_tier])
-      .map((j) => {
-        const start = new Date(j.created_at);
-        const days = tierDurations[j.membership_tier!];
-        const end = new Date(start);
-        end.setDate(end.getDate() + days);
-        end.setHours(0, 0, 0, 0);
-        const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          id: j.id,
-          name: `${j.first_name} ${j.last_name}`,
-          tier: j.membership_tier!,
-          expiresDate: end,
-          daysUntil,
-          status: daysUntil < 0 ? 'expired' as const : 'active' as const,
-          source: 'pma' as const,
-        };
-      });
-
-    let combined = [...memberExpirations, ...jotformExpirations];
-    if (tierFilter !== 'all') {
-      combined = combined.filter((e) => e.tier === tierFilter);
-    }
-    return combined.sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
-  }, [members, jotformOnly, tierFilter]);
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
@@ -264,52 +228,6 @@ export function MemberRoster() {
         </div>
       )}
 
-      {allExpirations.length > 0 && (
-        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={14} className="text-amber-600" />
-            <p className="text-xs font-bold text-ea-midnight">
-              Membership Expirations ({allExpirations.length})
-            </p>
-          </div>
-          <div className="flex gap-1.5 mb-2 flex-wrap">
-            {(['all', 'weekly', 'monthly', 'seasonal', 'annual'] as TierFilter[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTierFilter(t)}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-colors ${
-                  tierFilter === t ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700'
-                }`}
-              >
-                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {allExpirations.map((e) => {
-              const endDate = e.expiresDate.toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric',
-              });
-              const isExpired = e.status === 'expired';
-              const isSoon = !isExpired && e.daysUntil <= 7;
-              return (
-                <div key={`${e.source}-${e.id}`} className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-600">{e.name}</span>
-                    {e.source === 'pma' && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 font-medium">PMA</span>
-                    )}
-                  </div>
-                  <span className={`font-medium ${isExpired ? 'text-red-500' : isSoon ? 'text-amber-600' : 'text-green-600'}`}>
-                    {e.tier} · {isExpired ? `Expired ${endDate}` : isSoon ? `${endDate} (${e.daysUntil}d)` : endDate}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
@@ -341,6 +259,20 @@ export function MemberRoster() {
         <Button variant="outline" size="sm" onClick={handleExport} className="text-xs">
           Export CSV
         </Button>
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap">
+        {(['all', 'weekly', 'monthly', 'seasonal', 'annual'] as TierFilter[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTierFilter(t)}
+            className={`px-2.5 py-1 text-[10px] font-medium rounded-full transition-colors ${
+              tierFilter === t ? 'bg-ea-midnight text-white' : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {t === 'all' ? 'All Tiers' : t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -402,12 +334,18 @@ export function MemberRoster() {
           })}
 
           {/* JotForm-only PMA members */}
-          {filtered.filteredJotform.map((jf) => (
-            <div key={`jf-${jf.id}`} className="p-3 rounded-xl bg-white border border-amber-200">
+          {filtered.filteredJotform.map((jf) => {
+            const jfExpDate = getJotformExpiration(jf);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const jfExpired = jfExpDate ? jfExpDate < today : false;
+            const jfEndStr = jfExpDate ? jfExpDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+            return (
+            <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border ${jfExpired ? 'border-red-200' : 'border-amber-200'}`}>
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={jf.photo_url ?? undefined} />
-                  <AvatarFallback className="text-xs font-bold text-amber-900 bg-amber-300">
+                  <AvatarFallback className={`text-xs font-bold ${jfExpired ? 'text-white bg-red-900' : 'text-amber-900 bg-amber-300'}`}>
                     {jf.first_name?.[0] || '?'}{jf.last_name?.[0] || '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -416,11 +354,11 @@ export function MemberRoster() {
                     {jf.first_name} {jf.last_name}
                   </p>
                   <p className="text-[11px] text-gray-400">
-                    {jf.email} · {jf.phone}
+                    {jf.membership_tier || 'No tier'} · {jfExpired ? 'Expired' : 'Expires'} {jfEndStr || 'N/A'}
                   </p>
                 </div>
-                <Badge className="text-[9px] shrink-0 bg-amber-400 text-amber-900">
-                  PMA ONLY
+                <Badge className={`text-[9px] shrink-0 ${jfExpired ? 'bg-red-100 text-red-700' : 'bg-amber-400 text-amber-900'}`}>
+                  {jfExpired ? 'EXPIRED' : 'PMA ONLY'}
                 </Badge>
               </div>
               {jf.license_plate && (
@@ -429,7 +367,8 @@ export function MemberRoster() {
                 </p>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {totalResults === 0 && (
             <p className="text-sm text-gray-400 text-center py-8">No members found</p>
