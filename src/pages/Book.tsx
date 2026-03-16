@@ -119,9 +119,6 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
     buildCard(id, id === 18 ? 'Oasis Pass — 2 Hours' : id === 19 ? 'Oasis Pass — 4 Hours' : id === 22 ? 'Oasis Pass — 6 Hours' : 'Oasis Pass — 8 Hours')
   );
 
-  const MEMBER_PASSES: ServiceCard[] = MEMBER_PASS_IDS.map((id) =>
-    buildCard(id, id === 20 ? 'Silver/Gold Pass — 2 Hours' : 'Silver/Gold Pass — 4 Hours')
-  );
 
   const CAMPSITES: ServiceCard[] = CAMPSITE_ORDER.map((id) => {
     const names: Record<number, string> = {
@@ -275,12 +272,34 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
             Includes Zen Lounge with WiFi & coworking, spring water, trails & market
           </p>
           <div className="space-y-2">
-            {DAY_PASSES.map((service) => (
+            {DAY_PASSES.map((service) => {
+              const hasActiveSub = member?.subscription_active && member?.subscription_tier;
+              let displayPrice = service.price;
+              let targetService = { ...service };
+              
+              if (hasActiveSub) {
+                if (service.id === 18) {
+                  displayPrice = 'Included';
+                  targetService.id = 20; // Route to Member 2hr pass
+                } else if (service.id === 19) {
+                  displayPrice = 'Included';
+                  targetService.id = 21; // Route to Member 4hr pass
+                }
+              }
+              
+              const isIncluded = displayPrice === 'Included';
+              
+              return (
               <button
                 key={service.id}
-                onClick={() => setSelectedService(service)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+                onClick={() => setSelectedService(targetService)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left relative overflow-hidden"
               >
+                {isIncluded && (
+                  <div className="absolute top-0 right-0 px-2 py-0.5 text-white text-[9px] font-bold rounded-bl-lg" style={{ backgroundColor: 'var(--ea-emerald)' }}>
+                    Member Benefit
+                  </div>
+                )}
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
@@ -294,20 +313,19 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
                   <p className="text-[11px] text-gray-400">{service.description}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
-                    {service.price}
+                  <p className="text-sm font-bold" style={{ color: isIncluded ? 'var(--ea-emerald)' : 'var(--ea-midnight)' }}>
+                    {displayPrice}
                   </p>
                   <p className="text-[10px] text-gray-400">Book →</p>
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         <MemberPassSection
-          services={MEMBER_PASSES}
           member={member}
-          onSelect={setSelectedService}
           onSubscriptionChange={onRefreshMember}
         />
 

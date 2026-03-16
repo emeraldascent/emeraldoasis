@@ -18,16 +18,12 @@ const PASS_LIMITS: Record<string, number> = { silver: 5, gold: 10 };
 const TIER_PRICES: Record<string, number> = { silver: 25, gold: 50 };
 
 interface MemberPassSectionProps {
-  services: ServiceCard[];
   member: Member;
-  onSelect: (s: ServiceCard) => void;
   onSubscriptionChange?: () => void;
 }
 
 export function MemberPassSection({
-  services,
   member,
-  onSelect,
   onSubscriptionChange,
 }: MemberPassSectionProps) {
   const [purchaseStep, setPurchaseStep] = useState<PurchaseStep>('select');
@@ -263,34 +259,11 @@ export function MemberPassSection({
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {services.map((service) => (
-            <button
-              key={service.id}
-              onClick={() => onSelect(service)}
-              disabled={loadingUsage}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
-              >
-                {service.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-                  {service.name}
-                </p>
-                <p className="text-[11px] text-gray-400">{service.description}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>
-                  Included
-                </p>
-                <p className="text-[10px] text-gray-400">Book →</p>
-              </div>
-            </button>
-          ))}
+        <div className="p-4 rounded-xl bg-white border border-gray-100 space-y-2">
+          <p className="text-sm font-semibold text-ea-midnight">Your membership is active!</p>
+          <p className="text-xs text-gray-500">
+            Book any eligible Day Pass below and your member discount will be applied automatically at checkout.
+          </p>
         </div>
       )}
     </div>
