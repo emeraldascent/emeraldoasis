@@ -478,6 +478,93 @@ export function MemberRoster() {
           )}
         </div>
       )}
+
+      {/* Member Detail Dialog */}
+      <Dialog open={!!selectedMember || !!selectedJotform} onOpenChange={() => { setSelectedMember(null); setSelectedJotform(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Member Details</DialogTitle>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={selectedMember.photo_url ?? undefined} />
+                  <AvatarFallback className="text-lg font-bold text-white bg-ea-emerald">
+                    {selectedMember.first_name[0]}{selectedMember.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-semibold">{selectedMember.first_name} {selectedMember.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedMember.membership_tier} · {getBadgeStatus(selectedMember) === 'active' ? 'Active' : 'Expired'}</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail size={14} className="text-muted-foreground" />
+                  <a href={`mailto:${selectedMember.email}`} className="text-primary underline">{selectedMember.email}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={14} className="text-muted-foreground" />
+                  <a href={`tel:${selectedMember.phone}`} className="text-primary underline">{selectedMember.phone}</a>
+                </div>
+                {selectedMember.license_plate && (
+                  <div className="flex items-center gap-2">
+                    <Car size={14} className="text-muted-foreground" />
+                    <span>{selectedMember.license_plate}</span>
+                  </div>
+                )}
+                {selectedMember.emergency_contact && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">Emergency:</span>
+                    <span>{selectedMember.emergency_contact}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {selectedJotform && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={selectedJotform.photo_url ?? undefined} />
+                  <AvatarFallback className="text-lg font-bold text-amber-900 bg-amber-300">
+                    {selectedJotform.first_name?.[0] || '?'}{selectedJotform.last_name?.[0] || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-semibold">{selectedJotform.first_name} {selectedJotform.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedJotform.membership_tier || 'PMA Only'}</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail size={14} className="text-muted-foreground" />
+                  <a href={`mailto:${selectedJotform.email}`} className="text-primary underline">{selectedJotform.email}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={14} className="text-muted-foreground" />
+                  <a href={`tel:${selectedJotform.phone}`} className="text-primary underline">{selectedJotform.phone}</a>
+                </div>
+                {selectedJotform.license_plate && (
+                  <div className="flex items-center gap-2">
+                    <Car size={14} className="text-muted-foreground" />
+                    <span>{selectedJotform.license_plate}</span>
+                  </div>
+                )}
+                {selectedJotform.emergency_contact && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">Emergency:</span>
+                    <span>{selectedJotform.emergency_contact}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
