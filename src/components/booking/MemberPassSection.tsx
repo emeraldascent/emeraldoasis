@@ -4,14 +4,6 @@ import { PaymentForm } from './PaymentForm';
 import { supabase } from '@/integrations/supabase/client';
 import type { Member } from '../../lib/types';
 
-interface ServiceCard {
-  id: number;
-  name: string;
-  description: string;
-  price: string;
-  icon: React.ReactNode;
-}
-
 type PurchaseStep = 'select' | 'payment' | 'processing' | 'success';
 
 const PASS_LIMITS: Record<string, number> = { silver: 5, gold: 10 };
