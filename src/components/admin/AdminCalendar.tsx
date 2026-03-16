@@ -15,15 +15,6 @@ interface Booking {
   member: { first_name: string; last_name: string; email: string } | null;
 }
 
-interface SiteBookingDay {
-  id: string;
-  site_name: string;
-  platform: string;
-  guest_name: string;
-  check_in: string;
-  check_out: string;
-  type: 'site';
-}
 
 
 const MONTH_NAMES = [
