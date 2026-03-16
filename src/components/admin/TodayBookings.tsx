@@ -36,8 +36,6 @@ interface SiteBooking {
   type: 'site';
 }
 
-type AnyBooking = BookingWithMember | SiteBooking;
-
 const formatTime = (t: string | null) => {
   if (!t) return 'No time set';
   const [h, m] = t.split(':').map(Number);
