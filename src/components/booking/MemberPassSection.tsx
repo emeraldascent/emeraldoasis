@@ -229,7 +229,7 @@ export function MemberPassSection({
         style={{ color: 'var(--ea-midnight)' }}
       >
         <Star size={16} style={{ color: 'var(--ea-emerald)' }} />
-        Member Passes
+        {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} Passes
         <span
           className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full"
           style={{
@@ -252,9 +252,11 @@ export function MemberPassSection({
         </div>
       ) : (
         <div className="p-4 rounded-xl bg-white border border-gray-100 space-y-2">
-          <p className="text-sm font-semibold text-ea-midnight">Your membership is active!</p>
+          <p className="text-sm font-semibold text-ea-midnight">
+            Your {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} Pass is active!
+          </p>
           <p className="text-xs text-gray-500">
-            Book any eligible Day Pass below and your member discount will be applied automatically at checkout.
+            Book any eligible Day Pass below and it will be covered by your {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} Pass.
           </p>
         </div>
       )}
