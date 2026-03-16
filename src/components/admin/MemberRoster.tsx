@@ -151,17 +151,49 @@ export function MemberRoster() {
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
 
-  const expiringMembers = useMemo(() => {
+  const tierDurations: Record<string, number> = {
+    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
+  };
+
+  const allExpirations = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const weekOut = new Date(today);
-    weekOut.setDate(weekOut.getDate() + 7);
-    return members.filter((m) => {
+
+    const memberExpirations = members.map((m) => {
       const end = new Date(m.membership_end);
       end.setHours(0, 0, 0, 0);
-      return end >= today && end <= weekOut;
+      const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: m.id,
+        name: `${m.first_name} ${m.last_name}`,
+        tier: m.membership_tier,
+        expiresDate: end,
+        daysUntil,
+        source: 'app' as const,
+      };
     });
-  }, [members]);
+
+    const jotformExpirations = jotformOnly
+      .filter((j) => j.membership_tier && tierDurations[j.membership_tier])
+      .map((j) => {
+        const start = new Date(j.created_at);
+        const days = tierDurations[j.membership_tier!];
+        const end = new Date(start);
+        end.setDate(end.getDate() + days);
+        end.setHours(0, 0, 0, 0);
+        const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          id: j.id,
+          name: `${j.first_name} ${j.last_name}`,
+          tier: j.membership_tier!,
+          expiresDate: end,
+          daysUntil,
+          source: 'pma' as const,
+        };
+      });
+
+    return [...memberExpirations, ...jotformExpirations].sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
+  }, [members, jotformOnly]);
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
