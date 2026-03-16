@@ -19,10 +19,14 @@ export function Admin() {
         </h1>
 
         <Tabs defaultValue="today" className="w-full">
-          <TabsList className="w-full grid grid-cols-5 mb-4">
+          <TabsList className="w-full grid grid-cols-6 mb-4">
             <TabsTrigger value="today" className="text-xs gap-1">
               <CalendarCheck size={14} />
               Today
+            </TabsTrigger>
+            <TabsTrigger value="announce" className="text-xs gap-1">
+              <Megaphone size={14} />
+              Posts
             </TabsTrigger>
             <TabsTrigger value="calendar" className="text-xs gap-1">
               <Calendar size={14} />
@@ -44,6 +48,10 @@ export function Admin() {
 
           <TabsContent value="today">
             <TodayBookings />
+          </TabsContent>
+
+          <TabsContent value="announce">
+            <AdminAnnouncements />
           </TabsContent>
 
           <TabsContent value="calendar">

@@ -62,6 +62,8 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
 
         <MemberBadge member={member} badgeStatus={badgeStatus} />
 
+        <AnnouncementBoard />
+
         {/* Extend PMA button */}
         {isActive && (
           <>
