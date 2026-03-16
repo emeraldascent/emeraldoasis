@@ -171,6 +171,7 @@ export function MemberRoster() {
         tier: m.membership_tier,
         expiresDate: end,
         daysUntil,
+        status: daysUntil < 0 ? 'expired' as const : 'active' as const,
         source: 'app' as const,
       };
     });
@@ -190,12 +191,17 @@ export function MemberRoster() {
           tier: j.membership_tier!,
           expiresDate: end,
           daysUntil,
+          status: daysUntil < 0 ? 'expired' as const : 'active' as const,
           source: 'pma' as const,
         };
       });
 
-    return [...memberExpirations, ...jotformExpirations].sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
-  }, [members, jotformOnly]);
+    let combined = [...memberExpirations, ...jotformExpirations];
+    if (tierFilter !== 'all') {
+      combined = combined.filter((e) => e.tier === tierFilter);
+    }
+    return combined.sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
+  }, [members, jotformOnly, tierFilter]);
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
