@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMember } from '@/hooks/useMember';
-import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Calendar, MapPin, Clock, Ticket, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -35,7 +35,7 @@ export function Events() {
   const [events, setEvents] = useState<Event[]>([]);
   const [myTickets, setMyTickets] = useState<EventTicket[]>([]);
   const [myBookings, setMyBookings] = useState<MemberBooking[]>([]);
-  const [showBookings, setShowBookings] = useState(true);
+  
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -147,7 +147,7 @@ export function Events() {
   // Selected date detail
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selectedDateEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
-  const selectedDateBookings = selectedDate && showBookings ? bookingsByDate[selectedDate] || [] : [];
+  const selectedDateBookings = selectedDate ? bookingsByDate[selectedDate] || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -187,7 +187,7 @@ export function Events() {
             ))}
             {calDays.map(({ day, dateStr }) => {
               const dayEvents = eventsByDate[dateStr] || [];
-              const dayBookings = showBookings ? (bookingsByDate[dateStr] || []) : [];
+              const dayBookings = bookingsByDate[dateStr] || [];
               const isToday = dateStr === todayStr;
               const hasEvents = dayEvents.length > 0;
               const hasBookings = dayBookings.length > 0;
@@ -247,32 +247,17 @@ export function Events() {
             })}
           </div>
 
-          {/* Legend + bookings toggle */}
-          <div className="flex items-center justify-between mt-3 px-1">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
-              </span>
-              {showBookings && (
-                <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2563eb' }} /> Booking
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowBookings(!showBookings)}
-              className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full transition-colors"
-              style={{
-                backgroundColor: showBookings ? '#EFF6FF' : '#F3F4F6',
-                color: showBookings ? '#2563eb' : '#9CA3AF',
-              }}
-            >
-              {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
-              Bookings
-            </button>
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-3 px-1">
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2563eb' }} /> Booking
+            </span>
           </div>
         </div>
 
@@ -449,60 +434,45 @@ export function Events() {
         {/* Upcoming Bookings Section — toggleable */}
         {member && (
           <div className="space-y-3 mt-6">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-sm font-semibold text-ea-midnight">
-                Your Upcoming Bookings
-              </h2>
-              <button
-                onClick={() => setShowBookings(!showBookings)}
-                className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${
-                  showBookings ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
-                {showBookings ? 'On' : 'Off'}
-              </button>
-            </div>
+            <h2 className="text-sm font-semibold text-ea-midnight px-1">
+              Your Upcoming Bookings
+            </h2>
 
-            {showBookings && (
-              <>
-                {upcomingBookings.length === 0 ? (
-                  <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
-                    <span className="text-xl block mb-1">🌿</span>
-                    <p className="text-xs text-gray-400">No upcoming bookings</p>
-                  </div>
-                ) : (
-                  upcomingBookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="bg-white rounded-xl border border-gray-100 p-3"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center bg-blue-50">
-                          <span className="text-[10px] font-bold leading-none text-ea-midnight">
-                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                          </span>
-                          <span className="text-sm font-bold leading-none text-ea-midnight">
-                            {new Date(booking.booking_date + 'T12:00:00').getDate()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate text-ea-midnight">
-                            {booking.service_name}
-                          </p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">
-                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                            {booking.booking_time ? ` · ${formatTime(booking.booking_time)}` : ''}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                          Confirmed
-                        </span>
-                      </div>
+            {upcomingBookings.length === 0 ? (
+              <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
+                <span className="text-xl block mb-1">🌿</span>
+                <p className="text-xs text-gray-400">No upcoming bookings</p>
+              </div>
+            ) : (
+              upcomingBookings.map((booking: MemberBooking) => (
+                <div
+                  key={booking.id}
+                  className="bg-white rounded-xl border border-gray-100 p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center bg-blue-50">
+                      <span className="text-[10px] font-bold leading-none text-ea-midnight">
+                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+                      </span>
+                      <span className="text-sm font-bold leading-none text-ea-midnight">
+                        {new Date(booking.booking_date + 'T12:00:00').getDate()}
+                      </span>
                     </div>
-                  ))
-                )}
-              </>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate text-ea-midnight">
+                        {booking.service_name}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {booking.booking_time ? ` · ${formatTime(booking.booking_time)}` : ''}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                      Confirmed
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}
