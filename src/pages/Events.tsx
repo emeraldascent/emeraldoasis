@@ -128,6 +128,10 @@ export function Events() {
     bookingsByDate[b.booking_date].push(b);
   });
 
+  const upcomingBookings = myBookings.filter(
+    (b) => b.booking_date >= todayStr
+  );
+
   const ticketedEventIds = new Set(myTickets.map((t) => t.event_id));
 
   const calDays: { day: number; dateStr: string }[] = [];
