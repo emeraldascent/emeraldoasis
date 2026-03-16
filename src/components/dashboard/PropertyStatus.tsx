@@ -33,9 +33,14 @@ export function PropertyStatus() {
       className="p-3 rounded-xl border-l-4"
       style={{ borderColor: c.borderColor, backgroundColor: c.bgColor }}
     >
-      <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
-        {c.emoji} {c.label}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+          {c.emoji} {c.label}
+        </p>
+        {status === 'open' && (
+          <span className="text-xs font-medium text-gray-500">9 AM – 6 PM</span>
+        )}
+      </div>
       <p className="text-xs text-gray-500">{c.description}</p>
     </div>
   );
