@@ -180,7 +180,7 @@ export function GateCheck() {
                   {jf.first_name} {jf.last_name}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <Badge className="text-[10px] font-bold bg-amber-600">
+                  <Badge className="text-[10px] font-bold bg-amber-400 text-amber-900">
                     PMA ONLY
                   </Badge>
                   <span className="text-xs text-gray-500">{jf.membership_tier || 'No tier'}</span>
