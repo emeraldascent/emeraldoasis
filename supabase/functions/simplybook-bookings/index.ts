@@ -246,6 +246,14 @@ serve(async (req) => {
     const { action } = body;
 
     // Read-only actions use public token
+    if (action === "services") {
+      const token = await getPublicToken();
+      const events = await callPublicApi(token, "getEventList", []);
+      return new Response(JSON.stringify(events), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "time_slots") {
       const token = await getPublicToken();
       const { dateFrom, dateTo, eventId, unitId } = body;
