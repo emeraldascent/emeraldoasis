@@ -340,6 +340,14 @@ export function MemberRoster() {
             </button>
           ))}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleCopyEmails}
+          className={`text-[10px] h-7 px-2 ${emailsCopied ? 'border-green-500 text-green-600' : ''}`}
+        >
+          {emailsCopied ? <><Check size={10} className="mr-1" /> Copied!</> : <><Copy size={10} className="mr-1" /> Emails</>}
+        </Button>
         <Button variant="outline" size="sm" onClick={handleExport} className="text-[10px] h-7 px-2">
           CSV
         </Button>
