@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar, Search } from 'lucide-react';
+import { Crown, Calendar, Search, AlertTriangle } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -151,6 +151,18 @@ export function MemberRoster() {
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
 
+  const expiringMembers = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekOut = new Date(today);
+    weekOut.setDate(weekOut.getDate() + 7);
+    return members.filter((m) => {
+      const end = new Date(m.membership_end);
+      end.setHours(0, 0, 0, 0);
+      return end >= today && end <= weekOut;
+    });
+  }, [members]);
+
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
     acc[b.member_id].push(b);
@@ -205,6 +217,30 @@ export function MemberRoster() {
                   <span className="text-gray-500">
                     {b.service_name} {b.booking_time ? `· ${formatTime(b.booking_time)}` : ''}
                   </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {expiringMembers.length > 0 && (
+        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={14} className="text-amber-600" />
+            <p className="text-xs font-bold text-ea-midnight">
+              Expiring This Week ({expiringMembers.length})
+            </p>
+          </div>
+          <div className="space-y-1">
+            {expiringMembers.map((m) => {
+              const endDate = new Date(m.membership_end).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric',
+              });
+              return (
+                <div key={m.id} className="flex items-center justify-between text-[11px]">
+                  <span className="text-gray-600">{m.first_name} {m.last_name}</span>
+                  <span className="text-amber-600 font-medium">{m.membership_tier} · {endDate}</span>
                 </div>
               );
             })}
