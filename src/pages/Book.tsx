@@ -237,12 +237,35 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
           onSubscriptionChange={onRefreshMember}
         />
 
-        <ServiceSection
-          title="Campsites"
-          icon={<Tent size={16} style={{ color: 'var(--ea-emerald)' }} />}
-          services={CAMPSITES}
-          onSelect={setSelectedService}
-        />
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Tent size={16} style={{ color: 'var(--ea-emerald)' }} />
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
+              Campsites
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {CAMPSITES.map((service) => (
+              <button
+                key={service.id}
+                onClick={() => setSelectedService(service)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
+              >
+                {service.imageUrl && (
+                  <img src={service.imageUrl} alt={service.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>{service.name}</p>
+                  <p className="text-[11px] text-gray-400">{service.description}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold" style={{ color: 'var(--ea-emerald)' }}>{service.price}</p>
+                  <p className="text-[10px] text-gray-400">Book →</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
