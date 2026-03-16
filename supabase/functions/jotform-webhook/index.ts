@@ -105,6 +105,40 @@ Deno.serve(async (req) => {
       );
     }
 
+    // If photo URL is from jotform.com, download and re-upload to storage
+    let finalPhotoUrl: string | null = photoUrl || null;
+    if (photoUrl && photoUrl.includes("jotform.com")) {
+      try {
+        const jotformApiKey = Deno.env.get("JOTFORM_API_KEY");
+        const photoFetchUrl = jotformApiKey ? `${photoUrl}?apiKey=${jotformApiKey}` : photoUrl;
+        const photoRes = await fetch(photoFetchUrl);
+        if (photoRes.ok) {
+          const photoBlob = await photoRes.arrayBuffer();
+          const contentType = photoRes.headers.get("content-type") || "image/png";
+          const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
+          const storagePath = `jotform/${submissionId || Date.now()}/photo.${ext}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from("member-photos")
+            .upload(storagePath, photoBlob, { contentType, upsert: true });
+
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from("member-photos")
+              .getPublicUrl(storagePath);
+            finalPhotoUrl = urlData.publicUrl;
+            console.log("Photo migrated to storage:", finalPhotoUrl);
+          } else {
+            console.error("Photo upload error:", uploadErr);
+          }
+        } else {
+          console.error("Photo download failed:", photoRes.status);
+        }
+      } catch (photoErr) {
+        console.error("Photo migration error:", photoErr);
+      }
+    }
+
     const { data, error } = await supabase
       .from("jotform_submissions")
       .insert({
@@ -116,7 +150,7 @@ Deno.serve(async (req) => {
         emergency_contact: emergencyContact,
         license_plate: licensePlate || null,
         membership_tier: membershipTier || null,
-        photo_url: photoUrl || null,
+        photo_url: finalPhotoUrl,
         raw_payload: formData,
       })
       .select();
