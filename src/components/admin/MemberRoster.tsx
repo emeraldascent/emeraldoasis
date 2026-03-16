@@ -224,6 +224,30 @@ export function MemberRoster() {
         </div>
       )}
 
+      {expiringMembers.length > 0 && (
+        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={14} className="text-amber-600" />
+            <p className="text-xs font-bold text-ea-midnight">
+              Expiring This Week ({expiringMembers.length})
+            </p>
+          </div>
+          <div className="space-y-1">
+            {expiringMembers.map((m) => {
+              const endDate = new Date(m.membership_end).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric',
+              });
+              return (
+                <div key={m.id} className="flex items-center justify-between text-[11px]">
+                  <span className="text-gray-600">{m.first_name} {m.last_name}</span>
+                  <span className="text-amber-600 font-medium">{m.membership_tier} · {endDate}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
