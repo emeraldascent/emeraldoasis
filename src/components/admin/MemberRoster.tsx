@@ -219,14 +219,13 @@ export function MemberRoster() {
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={member.photo_url ?? undefined} />
                     <AvatarFallback
-                      className="text-xs font-bold text-white"
-                      style={{ backgroundColor: isActive ? '#1B5E20' : '#B71C1C' }}
+                      className={`text-xs font-bold text-white ${isActive ? 'bg-green-900' : 'bg-red-900'}`}
                     >
                       {member.first_name[0]}{member.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
+                    <p className="text-sm font-semibold truncate text-ea-midnight">
                       {member.first_name} {member.last_name}
                     </p>
                     <p className="text-[11px] text-gray-400">
