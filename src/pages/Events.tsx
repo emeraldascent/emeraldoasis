@@ -247,32 +247,17 @@ export function Events() {
             })}
           </div>
 
-          {/* Legend + bookings toggle */}
-          <div className="flex items-center justify-between mt-3 px-1">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
-              </span>
-              {showBookings && (
-                <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2563eb' }} /> Booking
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowBookings(!showBookings)}
-              className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full transition-colors"
-              style={{
-                backgroundColor: showBookings ? '#EFF6FF' : '#F3F4F6',
-                color: showBookings ? '#2563eb' : '#9CA3AF',
-              }}
-            >
-              {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
-              Bookings
-            </button>
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-3 px-1">
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#d97706' }} /> Event
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#16a34a' }} /> My Ticket
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2563eb' }} /> Booking
+            </span>
           </div>
         </div>
 
