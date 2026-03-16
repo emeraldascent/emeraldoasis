@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar } from 'lucide-react';
+import { Crown, Calendar, Search } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -32,6 +33,7 @@ export function MemberRoster() {
   const [members, setMembers] = useState<Member[]>([]);
   const [todayBookings, setTodayBookings] = useState<TodayBooking[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,10 +79,22 @@ export function MemberRoster() {
     }
   };
 
-  const filtered = members.filter((m) => {
-    if (filter === 'all') return true;
-    return getBadgeStatus(m) === filter;
-  });
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return members.filter((m) => {
+      if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
+      if (q) {
+        const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+        const matchesSearch =
+          fullName.includes(q) ||
+          m.email.toLowerCase().includes(q) ||
+          (m.license_plate?.toLowerCase().includes(q) ?? false) ||
+          m.phone.includes(q);
+        if (!matchesSearch) return false;
+      }
+      return true;
+    });
+  }, [members, filter, search]);
 
   const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
@@ -123,10 +137,10 @@ export function MemberRoster() {
     <div className="space-y-4">
       {/* Today's bookings summary */}
       {todayBookings.length > 0 && (
-        <div className="p-3 rounded-xl border border-border" style={{ backgroundColor: '#F0FDF4' }}>
+        <div className="p-3 rounded-xl border border-border bg-green-50">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar size={14} style={{ color: 'var(--ea-emerald)' }} />
-            <p className="text-xs font-bold" style={{ color: 'var(--ea-midnight)' }}>
+            <Calendar size={14} className="text-ea-emerald" />
+            <p className="text-xs font-bold text-ea-midnight">
               Today's Bookings ({todayBookings.length})
             </p>
           </div>
@@ -148,6 +162,17 @@ export function MemberRoster() {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Input
+          placeholder="Search name, email, phone, plate…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 h-9 text-xs"
+        />
+      </div>
+
       {/* Filter tabs */}
       <div className="flex gap-2">
         {([
@@ -158,11 +183,9 @@ export function MemberRoster() {
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-            style={{
-              backgroundColor: filter === key ? 'var(--ea-emerald)' : '#F1F5F9',
-              color: filter === key ? 'white' : '#6B7280',
-            }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              filter === key ? 'bg-ea-emerald text-white' : 'bg-slate-100 text-gray-500'
+            }`}
           >
             {label}
           </button>
@@ -196,14 +219,13 @@ export function MemberRoster() {
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={member.photo_url ?? undefined} />
                     <AvatarFallback
-                      className="text-xs font-bold text-white"
-                      style={{ backgroundColor: isActive ? '#1B5E20' : '#B71C1C' }}
+                      className={`text-xs font-bold text-white ${isActive ? 'bg-green-900' : 'bg-red-900'}`}
                     >
                       {member.first_name[0]}{member.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
+                    <p className="text-sm font-semibold truncate text-ea-midnight">
                       {member.first_name} {member.last_name}
                     </p>
                     <p className="text-[11px] text-gray-400">
@@ -221,8 +243,7 @@ export function MemberRoster() {
 
                   <Badge
                     variant={isActive ? 'default' : 'destructive'}
-                    className="text-[9px] shrink-0"
-                    style={isActive ? { backgroundColor: '#1B5E20' } : undefined}
+                    className={`text-[9px] shrink-0 ${isActive ? 'bg-green-900' : ''}`}
                   >
                     {isActive ? 'ACTIVE' : 'EXPIRED'}
                   </Badge>
@@ -230,10 +251,10 @@ export function MemberRoster() {
 
                 {/* Today's bookings for this member */}
                 {memberBookings && memberBookings.length > 0 && (
-                  <div className="mt-2 ml-13 pl-13 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
+                  <div className="mt-2 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
                     {memberBookings.map((b) => (
                       <div key={b.id} className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                        <Calendar size={10} style={{ color: 'var(--ea-emerald)' }} />
+                        <Calendar size={10} className="text-ea-emerald" />
                         <span>{b.service_name}</span>
                         {b.booking_time && <span className="opacity-60">· {formatTime(b.booking_time)}</span>}
                       </div>
