@@ -434,22 +434,11 @@ export function Events() {
         {/* Upcoming Bookings Section — toggleable */}
         {member && (
           <div className="space-y-3 mt-6">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-sm font-semibold text-ea-midnight">
-                Your Upcoming Bookings
-              </h2>
-              <button
-                onClick={() => setShowBookings(!showBookings)}
-                className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${
-                  showBookings ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
-                {showBookings ? 'On' : 'Off'}
-              </button>
-            </div>
+            <h2 className="text-sm font-semibold text-ea-midnight px-1">
+              Your Upcoming Bookings
+            </h2>
 
-            {showBookings && (
+            
               <>
                 {upcomingBookings.length === 0 ? (
                   <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
