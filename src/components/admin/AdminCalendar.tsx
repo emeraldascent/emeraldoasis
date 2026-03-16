@@ -25,7 +25,6 @@ interface SiteBookingDay {
   type: 'site';
 }
 
-type AnyBooking = Booking | SiteBookingDay;
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',

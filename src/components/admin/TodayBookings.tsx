@@ -102,7 +102,7 @@ export function TodayBookings() {
     fetchToday();
   }, []);
 
-  const totalCount = memberBookings.length + siteBookings.length;
+  
 
   // Group member bookings by time slot
   const grouped = memberBookings.reduce<Record<string, BookingWithMember[]>>((acc, b) => {
