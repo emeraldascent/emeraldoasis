@@ -121,12 +121,25 @@ export function MemberRoster() {
     }
   };
 
+  const tierDurations: Record<string, number> = {
+    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
+  };
+
+  const getJotformExpiration = (j: JotformMember) => {
+    if (!j.membership_tier || !tierDurations[j.membership_tier]) return null;
+    const start = new Date(j.created_at);
+    const end = new Date(start);
+    end.setDate(end.getDate() + tierDurations[j.membership_tier]);
+    return end;
+  };
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     
-    const filteredMembers = members.filter((m) => {
+    let filteredMembers = members.filter((m) => {
       if (filter === 'jotform_only') return false;
       if (filter !== 'all' && getBadgeStatus(m) !== filter) return false;
+      if (tierFilter !== 'all' && m.membership_tier !== tierFilter) return false;
       if (q) {
         const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
         return fullName.includes(q) || m.email.toLowerCase().includes(q) ||
@@ -137,6 +150,7 @@ export function MemberRoster() {
 
     const filteredJotform = (filter === 'all' || filter === 'jotform_only' || filter === 'active')
       ? jotformOnly.filter((j) => {
+          if (tierFilter !== 'all' && j.membership_tier !== tierFilter) return false;
           if (q) {
             const fullName = `${j.first_name} ${j.last_name}`.toLowerCase();
             return fullName.includes(q) || j.email.toLowerCase().includes(q) ||
@@ -147,61 +161,7 @@ export function MemberRoster() {
       : [];
 
     return { filteredMembers, filteredJotform };
-  }, [members, jotformOnly, filter, search]);
-
-  const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
-  const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
-  const jotformCt = jotformOnly.length;
-
-  const tierDurations: Record<string, number> = {
-    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
-  };
-
-  const allExpirations = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const memberExpirations = members.map((m) => {
-      const end = new Date(m.membership_end);
-      end.setHours(0, 0, 0, 0);
-      const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        id: m.id,
-        name: `${m.first_name} ${m.last_name}`,
-        tier: m.membership_tier,
-        expiresDate: end,
-        daysUntil,
-        status: daysUntil < 0 ? 'expired' as const : 'active' as const,
-        source: 'app' as const,
-      };
-    });
-
-    const jotformExpirations = jotformOnly
-      .filter((j) => j.membership_tier && tierDurations[j.membership_tier])
-      .map((j) => {
-        const start = new Date(j.created_at);
-        const days = tierDurations[j.membership_tier!];
-        const end = new Date(start);
-        end.setDate(end.getDate() + days);
-        end.setHours(0, 0, 0, 0);
-        const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          id: j.id,
-          name: `${j.first_name} ${j.last_name}`,
-          tier: j.membership_tier!,
-          expiresDate: end,
-          daysUntil,
-          status: daysUntil < 0 ? 'expired' as const : 'active' as const,
-          source: 'pma' as const,
-        };
-      });
-
-    let combined = [...memberExpirations, ...jotformExpirations];
-    if (tierFilter !== 'all') {
-      combined = combined.filter((e) => e.tier === tierFilter);
-    }
-    return combined.sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
-  }, [members, jotformOnly, tierFilter]);
+  }, [members, jotformOnly, filter, tierFilter, search]);
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
