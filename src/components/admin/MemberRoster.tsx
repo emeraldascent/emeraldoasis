@@ -444,7 +444,7 @@ export function MemberRoster() {
             const jfExpired = jfExpDate ? jfExpDate < todayDate : false;
             const jfEndStr = jfExpDate ? jfExpDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
             return (
-              <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border ${jfExpired ? 'border-red-200' : 'border-amber-200'}`}>
+              <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border cursor-pointer hover:border-gray-300 transition-colors ${jfExpired ? 'border-red-200' : 'border-amber-200'}`} onClick={() => setSelectedJotform(jf)}>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={jf.photo_url ?? undefined} />
