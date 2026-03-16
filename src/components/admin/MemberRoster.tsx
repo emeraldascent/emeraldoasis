@@ -51,6 +51,7 @@ export function MemberRoster() {
   const [jotformOnly, setJotformOnly] = useState<JotformMember[]>([]);
   const [todayBookings, setTodayBookings] = useState<TodayBooking[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
+  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
