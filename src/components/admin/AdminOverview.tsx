@@ -61,7 +61,7 @@ export function AdminOverview() {
         .lte('membership_end', weekStr);
 
       setStats({
-        todayBookings: bookingCount ?? 0,
+        todayBookings: (bookingCount ?? 0) + (siteCount ?? 0),
         activeMembers: (activeCount ?? 0) + (unmatchedJotformCount ?? 0),
         expiringThisWeek: expiringCount ?? 0,
       });
