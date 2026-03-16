@@ -69,6 +69,36 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Dedup: skip if this exact submission_id already exists
+    if (submissionId) {
+      const { count } = await supabase
+        .from("jotform_submissions")
+        .select("*", { count: "exact", head: true })
+        .eq("jotform_submission_id", submissionId);
+      if (count && count > 0) {
+        console.log("Duplicate submission_id, skipping:", submissionId);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "duplicate_submission_id" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Dedup: skip if same email submitted within last 5 minutes
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabase
+      .from("jotform_submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("email", email)
+      .gte("created_at", fiveMinAgo);
+    if (recentCount && recentCount > 0) {
+      console.log("Duplicate email within 5min, skipping:", email);
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: "duplicate_email_recent" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { data, error } = await supabase
       .from("jotform_submissions")
       .insert({
