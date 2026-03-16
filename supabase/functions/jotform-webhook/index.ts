@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     let emergencyContact = "";
     let membershipTier = "";
     let licensePlate = "";
+    let photoUrl = "";
     let submissionId = formData["submissionID"] || formData["submission_id"] || "";
 
     for (const [key, value] of Object.entries(formData)) {
@@ -55,6 +56,11 @@ Deno.serve(async (req) => {
       if (k.includes("emergency")) emergencyContact = value.trim();
       if (k.includes("membership") || k.includes("tier") || k.includes("plan")) membershipTier = value.trim().toLowerCase();
       if (k.includes("license") || k.includes("plate") || k.includes("vehicle")) licensePlate = value.trim();
+      if ((k.includes("photo") || k.includes("image") || k.includes("picture") || k.includes("upload") || k.includes("file")) && value && !photoUrl) {
+        // JotForm file uploads come as URLs
+        const trimmed = value.trim();
+        if (trimmed.startsWith("http")) photoUrl = trimmed;
+      }
     }
 
     if (!email) {
@@ -110,6 +116,7 @@ Deno.serve(async (req) => {
         emergency_contact: emergencyContact,
         license_plate: licensePlate || null,
         membership_tier: membershipTier || null,
+        photo_url: photoUrl || null,
         raw_payload: formData,
       })
       .select();
