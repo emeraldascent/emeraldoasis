@@ -252,9 +252,11 @@ export function MemberPassSection({
         </div>
       ) : (
         <div className="p-4 rounded-xl bg-white border border-gray-100 space-y-2">
-          <p className="text-sm font-semibold text-ea-midnight">Your membership is active!</p>
+          <p className="text-sm font-semibold text-ea-midnight">
+            Your {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} Pass is active!
+          </p>
           <p className="text-xs text-gray-500">
-            Book any eligible Day Pass below and your member discount will be applied automatically at checkout.
+            Book any eligible Day Pass below and it will be covered by your {member.subscription_tier === 'gold' ? 'Gold' : 'Silver'} Pass.
           </p>
         </div>
       )}
