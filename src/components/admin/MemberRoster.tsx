@@ -162,6 +162,17 @@ export function MemberRoster() {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Input
+          placeholder="Search name, email, phone, plate…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 h-9 text-xs"
+        />
+      </div>
+
       {/* Filter tabs */}
       <div className="flex gap-2">
         {([
@@ -172,11 +183,9 @@ export function MemberRoster() {
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-            style={{
-              backgroundColor: filter === key ? 'var(--ea-emerald)' : '#F1F5F9',
-              color: filter === key ? 'white' : '#6B7280',
-            }}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              filter === key ? 'bg-ea-emerald text-white' : 'bg-slate-100 text-gray-500'
+            }`}
           >
             {label}
           </button>
