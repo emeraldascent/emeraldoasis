@@ -151,17 +151,49 @@ export function MemberRoster() {
   const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
   const jotformCt = jotformOnly.length;
 
-  const expiringMembers = useMemo(() => {
+  const tierDurations: Record<string, number> = {
+    weekly: 7, monthly: 30, seasonal: 90, annual: 365,
+  };
+
+  const allExpirations = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const weekOut = new Date(today);
-    weekOut.setDate(weekOut.getDate() + 7);
-    return members.filter((m) => {
+
+    const memberExpirations = members.map((m) => {
       const end = new Date(m.membership_end);
       end.setHours(0, 0, 0, 0);
-      return end >= today && end <= weekOut;
+      const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: m.id,
+        name: `${m.first_name} ${m.last_name}`,
+        tier: m.membership_tier,
+        expiresDate: end,
+        daysUntil,
+        source: 'app' as const,
+      };
     });
-  }, [members]);
+
+    const jotformExpirations = jotformOnly
+      .filter((j) => j.membership_tier && tierDurations[j.membership_tier])
+      .map((j) => {
+        const start = new Date(j.created_at);
+        const days = tierDurations[j.membership_tier!];
+        const end = new Date(start);
+        end.setDate(end.getDate() + days);
+        end.setHours(0, 0, 0, 0);
+        const daysUntil = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          id: j.id,
+          name: `${j.first_name} ${j.last_name}`,
+          tier: j.membership_tier!,
+          expiresDate: end,
+          daysUntil,
+          source: 'pma' as const,
+        };
+      });
+
+    return [...memberExpirations, ...jotformExpirations].sort((a, b) => a.expiresDate.getTime() - b.expiresDate.getTime());
+  }, [members, jotformOnly]);
 
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
@@ -224,23 +256,32 @@ export function MemberRoster() {
         </div>
       )}
 
-      {expiringMembers.length > 0 && (
+      {allExpirations.length > 0 && (
         <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={14} className="text-amber-600" />
             <p className="text-xs font-bold text-ea-midnight">
-              Expiring This Week ({expiringMembers.length})
+              Membership Expirations ({allExpirations.length})
             </p>
           </div>
-          <div className="space-y-1">
-            {expiringMembers.map((m) => {
-              const endDate = new Date(m.membership_end).toLocaleDateString('en-US', {
+          <div className="space-y-1.5">
+            {allExpirations.map((e) => {
+              const endDate = e.expiresDate.toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric',
               });
+              const isExpired = e.daysUntil < 0;
+              const isSoon = !isExpired && e.daysUntil <= 7;
               return (
-                <div key={m.id} className="flex items-center justify-between text-[11px]">
-                  <span className="text-gray-600">{m.first_name} {m.last_name}</span>
-                  <span className="text-amber-600 font-medium">{m.membership_tier} · {endDate}</span>
+                <div key={e.id} className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-600">{e.name}</span>
+                    {e.source === 'pma' && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 font-medium">PMA</span>
+                    )}
+                  </div>
+                  <span className={`font-medium ${isExpired ? 'text-red-500' : isSoon ? 'text-amber-600' : 'text-gray-500'}`}>
+                    {e.tier} · {isExpired ? `Expired ${endDate}` : isSoon ? `${endDate} (${e.daysUntil}d)` : endDate}
+                  </span>
                 </div>
               );
             })}
