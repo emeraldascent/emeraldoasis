@@ -11,6 +11,7 @@ import { MembershipIncludes } from '../components/dashboard/MembershipIncludes';
 import { OasisPassUpgrade } from '../components/dashboard/OasisPassUpgrade';
 import { ExpiredMemberState } from '../components/dashboard/ExpiredMemberState';
 import { MembershipUpgrade } from '../components/membership/MembershipUpgrade';
+import { AnnouncementBoard } from '../components/dashboard/AnnouncementBoard';
 import { RefreshCw } from 'lucide-react';
 
 const LOGO_URL = '/ea-logo.jpg';
@@ -60,6 +61,8 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
         </div>
 
         <MemberBadge member={member} badgeStatus={badgeStatus} />
+
+        <AnnouncementBoard />
 
         {/* Extend PMA button */}
         {isActive && (

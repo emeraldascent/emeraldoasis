@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          emoji: string
+          id: string
+          is_active: boolean
+          priority: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          emoji?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          emoji?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           booking_date: string
