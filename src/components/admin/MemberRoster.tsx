@@ -256,23 +256,32 @@ export function MemberRoster() {
         </div>
       )}
 
-      {expiringMembers.length > 0 && (
+      {allExpirations.length > 0 && (
         <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={14} className="text-amber-600" />
             <p className="text-xs font-bold text-ea-midnight">
-              Expiring This Week ({expiringMembers.length})
+              Membership Expirations ({allExpirations.length})
             </p>
           </div>
-          <div className="space-y-1">
-            {expiringMembers.map((m) => {
-              const endDate = new Date(m.membership_end).toLocaleDateString('en-US', {
+          <div className="space-y-1.5">
+            {allExpirations.map((e) => {
+              const endDate = e.expiresDate.toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric',
               });
+              const isExpired = e.daysUntil < 0;
+              const isSoon = !isExpired && e.daysUntil <= 7;
               return (
-                <div key={m.id} className="flex items-center justify-between text-[11px]">
-                  <span className="text-gray-600">{m.first_name} {m.last_name}</span>
-                  <span className="text-amber-600 font-medium">{m.membership_tier} · {endDate}</span>
+                <div key={e.id} className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-600">{e.name}</span>
+                    {e.source === 'pma' && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 font-medium">PMA</span>
+                    )}
+                  </div>
+                  <span className={`font-medium ${isExpired ? 'text-red-500' : isSoon ? 'text-amber-600' : 'text-gray-500'}`}>
+                    {e.tier} · {isExpired ? `Expired ${endDate}` : isSoon ? `${endDate} (${e.daysUntil}d)` : endDate}
+                  </span>
                 </div>
               );
             })}
