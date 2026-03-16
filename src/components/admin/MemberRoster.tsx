@@ -241,6 +241,16 @@ export function MemberRoster() {
     URL.revokeObjectURL(url);
   };
 
+  const [emailsCopied, setEmailsCopied] = useState(false);
+  const handleCopyEmails = () => {
+    const memberEmails = filtered.filteredMembers.map((m) => m.email);
+    const jotformEmails = filtered.filteredJotform.map((j) => j.email);
+    const allEmails = [...new Set([...memberEmails, ...jotformEmails])];
+    navigator.clipboard.writeText(allEmails.join(', '));
+    setEmailsCopied(true);
+    setTimeout(() => setEmailsCopied(false), 2000);
+  };
+
   const formatTime = (t: string | null) => {
     if (!t) return '';
     const [h, m] = t.split(':').map(Number);
