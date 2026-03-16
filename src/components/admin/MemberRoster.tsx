@@ -369,7 +369,6 @@ export function MemberRoster() {
             </div>
             );
           })}
-          ))}
 
           {totalResults === 0 && (
             <p className="text-sm text-gray-400 text-center py-8">No members found</p>
