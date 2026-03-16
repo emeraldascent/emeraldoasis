@@ -259,8 +259,8 @@ export function MemberRoster() {
       <div className="flex gap-2 flex-wrap">
         {([
           ['all', `All (${members.length + jotformCt})`],
-          ['active', `Active (${activeCt + jotformCt})`],
-          ['expired', `Expired (${expiredCt})`],
+          ['active', `Active (${activeCt + activeJotformCt})`],
+          ['expired', `Expired (${expiredCt + expiredJotformCt})`],
           ['jotform_only', `PMA Only (${jotformCt})`],
         ] as [Filter, string][]).map(([key, label]) => (
           <button
