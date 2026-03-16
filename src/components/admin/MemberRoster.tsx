@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar, Search, ArrowUpDown } from 'lucide-react';
+import { Crown, Calendar, Search, ArrowUpDown, Copy, Check } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -241,6 +241,16 @@ export function MemberRoster() {
     URL.revokeObjectURL(url);
   };
 
+  const [emailsCopied, setEmailsCopied] = useState(false);
+  const handleCopyEmails = () => {
+    const memberEmails = filtered.filteredMembers.map((m) => m.email);
+    const jotformEmails = filtered.filteredJotform.map((j) => j.email);
+    const allEmails = [...new Set([...memberEmails, ...jotformEmails])];
+    navigator.clipboard.writeText(allEmails.join(', '));
+    setEmailsCopied(true);
+    setTimeout(() => setEmailsCopied(false), 2000);
+  };
+
   const formatTime = (t: string | null) => {
     if (!t) return '';
     const [h, m] = t.split(':').map(Number);
@@ -330,6 +340,14 @@ export function MemberRoster() {
             </button>
           ))}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleCopyEmails}
+          className={`text-[10px] h-7 px-2 ${emailsCopied ? 'border-green-500 text-green-600' : ''}`}
+        >
+          {emailsCopied ? <><Check size={10} className="mr-1" /> Copied!</> : <><Copy size={10} className="mr-1" /> Emails</>}
+        </Button>
         <Button variant="outline" size="sm" onClick={handleExport} className="text-[10px] h-7 px-2">
           CSV
         </Button>
