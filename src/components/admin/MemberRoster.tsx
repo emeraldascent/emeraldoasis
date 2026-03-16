@@ -163,6 +163,10 @@ export function MemberRoster() {
     return { filteredMembers, filteredJotform };
   }, [members, jotformOnly, filter, tierFilter, search]);
 
+  const activeCt = members.filter((m) => getBadgeStatus(m) === 'active').length;
+  const expiredCt = members.filter((m) => getBadgeStatus(m) === 'expired').length;
+  const jotformCt = jotformOnly.length;
+
   const bookingsByMember = todayBookings.reduce<Record<string, TodayBooking[]>>((acc, b) => {
     if (!acc[b.member_id]) acc[b.member_id] = [];
     acc[b.member_id].push(b);
@@ -224,52 +228,6 @@ export function MemberRoster() {
         </div>
       )}
 
-      {allExpirations.length > 0 && (
-        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={14} className="text-amber-600" />
-            <p className="text-xs font-bold text-ea-midnight">
-              Membership Expirations ({allExpirations.length})
-            </p>
-          </div>
-          <div className="flex gap-1.5 mb-2 flex-wrap">
-            {(['all', 'weekly', 'monthly', 'seasonal', 'annual'] as TierFilter[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTierFilter(t)}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-colors ${
-                  tierFilter === t ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700'
-                }`}
-              >
-                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {allExpirations.map((e) => {
-              const endDate = e.expiresDate.toLocaleDateString('en-US', {
-                month: 'short', day: 'numeric',
-              });
-              const isExpired = e.status === 'expired';
-              const isSoon = !isExpired && e.daysUntil <= 7;
-              return (
-                <div key={`${e.source}-${e.id}`} className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-600">{e.name}</span>
-                    {e.source === 'pma' && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 font-medium">PMA</span>
-                    )}
-                  </div>
-                  <span className={`font-medium ${isExpired ? 'text-red-500' : isSoon ? 'text-amber-600' : 'text-green-600'}`}>
-                    {e.tier} · {isExpired ? `Expired ${endDate}` : isSoon ? `${endDate} (${e.daysUntil}d)` : endDate}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
@@ -301,6 +259,20 @@ export function MemberRoster() {
         <Button variant="outline" size="sm" onClick={handleExport} className="text-xs">
           Export CSV
         </Button>
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap">
+        {(['all', 'weekly', 'monthly', 'seasonal', 'annual'] as TierFilter[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTierFilter(t)}
+            className={`px-2.5 py-1 text-[10px] font-medium rounded-full transition-colors ${
+              tierFilter === t ? 'bg-ea-midnight text-white' : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {t === 'all' ? 'All Tiers' : t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
       </div>
 
       {loading ? (
