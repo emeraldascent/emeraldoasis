@@ -126,19 +126,23 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-md mx-auto px-4 py-5 space-y-6">
-        <div className="text-center">
-          <h1
-            className="text-lg mb-1"
-            style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              color: 'var(--ea-midnight)',
-            }}
-          >
-            Book an Experience
-          </h1>
-          <p className="text-xs text-gray-400">
-            Welcome back, {member.first_name}
-          </p>
+        {/* Hero photo banner */}
+        <div className="relative rounded-xl overflow-hidden h-36">
+          <img
+            src="/photos/creek-trail.jpg"
+            alt="Mineral Creek trail"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+            <div>
+              <h1 className="text-lg text-white font-serif">
+                Book an Experience
+              </h1>
+              <p className="text-[11px] text-white/80">
+                Welcome back, {member.first_name}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Free Welcome Pass */}
