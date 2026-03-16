@@ -147,7 +147,7 @@ export function Events() {
   // Selected date detail
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selectedDateEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
-  const selectedDateBookings = selectedDate && showBookings ? bookingsByDate[selectedDate] || [] : [];
+  const selectedDateBookings = selectedDate ? bookingsByDate[selectedDate] || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
