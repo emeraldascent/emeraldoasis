@@ -3,8 +3,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar, Search, ArrowUpDown, Copy, Check } from 'lucide-react';
+import { Crown, Calendar, Search, ArrowUpDown, Copy, Check, Phone, Mail, Car, AlertTriangle } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
