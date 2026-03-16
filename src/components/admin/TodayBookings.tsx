@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Tent } from 'lucide-react';
 
 interface BookingWithMember {
   id: string;
@@ -13,6 +13,7 @@ interface BookingWithMember {
   is_member_pass: boolean | null;
   status: string;
   member_id: string;
+  type: 'member';
   member?: {
     first_name: string;
     last_name: string;
@@ -25,6 +26,18 @@ interface BookingWithMember {
   };
 }
 
+interface SiteBooking {
+  id: string;
+  site_name: string;
+  platform: string;
+  guest_name: string;
+  check_in: string;
+  check_out: string;
+  type: 'site';
+}
+
+type AnyBooking = BookingWithMember | SiteBooking;
+
 const formatTime = (t: string | null) => {
   if (!t) return 'No time set';
   const [h, m] = t.split(':').map(Number);
@@ -32,8 +45,15 @@ const formatTime = (t: string | null) => {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
 };
 
+const platformColors: Record<string, { bg: string; text: string; label: string }> = {
+  airbnb: { bg: '#FEE2E2', text: '#DC2626', label: 'Airbnb' },
+  hipcamp: { bg: '#DCFCE7', text: '#16A34A', label: 'Hipcamp' },
+  unknown: { bg: '#F3F4F6', text: '#6B7280', label: 'External' },
+};
+
 export function TodayBookings() {
-  const [bookings, setBookings] = useState<BookingWithMember[]>([]);
+  const [memberBookings, setMemberBookings] = useState<BookingWithMember[]>([]);
+  const [siteBookings, setSiteBookings] = useState<SiteBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,51 +61,53 @@ export function TodayBookings() {
       setLoading(true);
       const today = new Date().toISOString().slice(0, 10);
 
-      const { data: bookingData, error: bookingError } = await supabase
-        .from('member_bookings')
-        .select('id, service_name, booking_time, booking_date, guest_names, is_member_pass, status, member_id')
-        .eq('booking_date', today)
-        .eq('status', 'confirmed')
-        .order('booking_time', { ascending: true });
+      // Fetch member bookings and site bookings in parallel
+      const [memberResult, siteResult] = await Promise.all([
+        supabase
+          .from('member_bookings')
+          .select('id, service_name, booking_time, booking_date, guest_names, is_member_pass, status, member_id')
+          .eq('booking_date', today)
+          .eq('status', 'confirmed')
+          .order('booking_time', { ascending: true }),
+        supabase
+          .from('site_bookings')
+          .select('id, site_name, platform, guest_name, check_in, check_out')
+          .lte('check_in', today)
+          .gt('check_out', today),
+      ]);
 
-      if (bookingError || !bookingData) {
-        setLoading(false);
-        return;
-      }
+      const bookingData = memberResult.data || [];
+      const siteData = (siteResult.data || []).map((s: any) => ({ ...s, type: 'site' as const }));
+      setSiteBookings(siteData);
 
-      // Get unique member IDs
+      // Get member details
       const memberIds = [...new Set(bookingData.map(b => b.member_id))];
+      if (memberIds.length > 0) {
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('id, first_name, last_name, email, phone, photo_url, membership_tier, subscription_tier, subscription_active')
+          .in('id', memberIds);
 
-      if (memberIds.length === 0) {
-        setBookings([]);
-        setLoading(false);
-        return;
+        const memberMap = (memberData || []).reduce<Record<string, BookingWithMember['member']>>((acc, m) => {
+          acc[m.id] = m;
+          return acc;
+        }, {});
+
+        setMemberBookings(bookingData.map(b => ({ ...b, type: 'member' as const, member: memberMap[b.member_id] })));
+      } else {
+        setMemberBookings([]);
       }
 
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('id, first_name, last_name, email, phone, photo_url, membership_tier, subscription_tier, subscription_active')
-        .in('id', memberIds);
-
-      const memberMap = (memberData || []).reduce<Record<string, BookingWithMember['member']>>((acc, m) => {
-        acc[m.id] = m;
-        return acc;
-      }, {});
-
-      const enriched: BookingWithMember[] = bookingData.map(b => ({
-        ...b,
-        member: memberMap[b.member_id],
-      }));
-
-      setBookings(enriched);
       setLoading(false);
     };
 
     fetchToday();
   }, []);
 
-  // Group by time slot
-  const grouped = bookings.reduce<Record<string, BookingWithMember[]>>((acc, b) => {
+  const totalCount = memberBookings.length + siteBookings.length;
+
+  // Group member bookings by time slot
+  const grouped = memberBookings.reduce<Record<string, BookingWithMember[]>>((acc, b) => {
     const key = b.booking_time || 'unscheduled';
     if (!acc[key]) acc[key] = [];
     acc[key].push(b);
@@ -98,7 +120,6 @@ export function TodayBookings() {
     return a.localeCompare(b);
   });
 
-  // Find current/next time slot
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -119,15 +140,69 @@ export function TodayBookings() {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
         </div>
-        <Badge
-          className="text-[10px]"
-          style={{ backgroundColor: 'var(--ea-emerald)', color: 'white' }}
-        >
-          {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          {siteBookings.length > 0 && (
+            <Badge className="text-[10px]" style={{ backgroundColor: '#8B5CF6', color: 'white' }}>
+              {siteBookings.length} site{siteBookings.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          <Badge
+            className="text-[10px]"
+            style={{ backgroundColor: 'var(--ea-emerald)', color: 'white' }}
+          >
+            {memberBookings.length} booking{memberBookings.length !== 1 ? 's' : ''}
+          </Badge>
+        </div>
       </div>
 
-      {bookings.length === 0 ? (
+      {/* Site bookings (Airbnb/Hipcamp) */}
+      {siteBookings.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Tent size={12} className="text-purple-500" />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-purple-600">
+              Campsite Guests Today
+            </span>
+          </div>
+          <div className="space-y-1.5 ml-4">
+            {siteBookings.map((sb) => {
+              const pc = platformColors[sb.platform] || platformColors.unknown;
+              return (
+                <div
+                  key={sb.id}
+                  className="flex items-center gap-3 p-3 rounded-xl border bg-white border-gray-100"
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: pc.bg }}
+                  >
+                    <Tent size={16} style={{ color: pc.text }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
+                      {sb.site_name}
+                    </p>
+                    <p className="text-[10px] text-gray-400 truncate">
+                      {sb.guest_name}
+                      <span className="text-gray-300 mx-1">·</span>
+                      Check-out: {new Date(sb.check_out + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-medium shrink-0"
+                    style={{ backgroundColor: pc.bg, color: pc.text }}
+                  >
+                    {pc.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Member bookings */}
+      {memberBookings.length === 0 && siteBookings.length === 0 ? (
         <div className="text-center py-12">
           <Calendar size={32} className="mx-auto mb-3 opacity-20" />
           <p className="text-sm text-gray-400">No bookings for today</p>
@@ -144,7 +219,6 @@ export function TodayBookings() {
 
             return (
               <div key={slot}>
-                {/* Time slot header */}
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className="w-2 h-2 rounded-full"
@@ -171,7 +245,6 @@ export function TodayBookings() {
                   </span>
                 </div>
 
-                {/* Booking cards */}
                 <div className="space-y-1.5 ml-4">
                   {slotBookings.map((booking) => {
                     const m = booking.member;
