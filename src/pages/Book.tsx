@@ -275,12 +275,20 @@ function ServiceSection({
             onClick={() => onSelect(service)}
             className="w-full flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors text-left"
           >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
-            >
-              {service.icon}
-            </div>
+            {service.imageUrl ? (
+              <img
+                src={service.imageUrl}
+                alt={service.name}
+                className="w-12 h-12 rounded-lg object-cover shrink-0"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'var(--ea-birch)', color: 'var(--ea-emerald)' }}
+              >
+                {service.icon}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: 'var(--ea-midnight)' }}>
                 {service.name}
