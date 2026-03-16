@@ -19,6 +19,23 @@ function getBadgeStatus(member: Member): BadgeStatus {
   return 'active';
 }
 
+// JotForm-only PMA members (no app account yet)
+interface JotformMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  emergency_contact: string;
+  license_plate: string | null;
+  photo_url: string | null;
+  pma_agreed: boolean;
+  pma_agreed_at: string | null;
+  created_at: string;
+  membership_tier: string | null;
+  source: 'jotform';
+}
+
 interface TodayBooking {
   id: string;
   service_name: string;
@@ -27,10 +44,11 @@ interface TodayBooking {
   guest_names: string[] | null;
 }
 
-type Filter = 'all' | 'active' | 'expired';
+type Filter = 'all' | 'active' | 'expired' | 'jotform_only';
 
 export function MemberRoster() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [jotformOnly, setJotformOnly] = useState<JotformMember[]>([]);
   const [todayBookings, setTodayBookings] = useState<TodayBooking[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
@@ -41,7 +59,7 @@ export function MemberRoster() {
 
     const fetchMembers = async () => {
       setLoading(true);
-      const [membersRes, bookingsRes] = await Promise.all([
+      const [membersRes, bookingsRes, jotformRes] = await Promise.all([
         supabase
           .from('members')
           .select('*')
@@ -52,6 +70,12 @@ export function MemberRoster() {
           .eq('booking_date', today)
           .eq('status', 'confirmed')
           .order('booking_time', { ascending: true }),
+        supabase
+          .from('jotform_submissions')
+          .select('*')
+          .is('matched_member_id', null)
+          .eq('pma_agreed', true)
+          .order('created_at', { ascending: false }),
       ]);
 
       if (!membersRes.error && membersRes.data) {
@@ -59,6 +83,23 @@ export function MemberRoster() {
       }
       if (!bookingsRes.error && bookingsRes.data) {
         setTodayBookings(bookingsRes.data as TodayBooking[]);
+      }
+      if (!jotformRes.error && jotformRes.data) {
+        setJotformOnly(jotformRes.data.map((j: any) => ({
+          id: j.id,
+          first_name: j.first_name,
+          last_name: j.last_name,
+          email: j.email,
+          phone: j.phone,
+          emergency_contact: j.emergency_contact,
+          license_plate: j.license_plate,
+          photo_url: j.photo_url,
+          pma_agreed: j.pma_agreed,
+          pma_agreed_at: j.pma_agreed_at,
+          created_at: j.created_at,
+          membership_tier: j.membership_tier,
+          source: 'jotform' as const,
+        })));
       }
       setLoading(false);
     };
