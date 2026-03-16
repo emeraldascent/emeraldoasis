@@ -35,7 +35,7 @@ export function Events() {
   const [events, setEvents] = useState<Event[]>([]);
   const [myTickets, setMyTickets] = useState<EventTicket[]>([]);
   const [myBookings, setMyBookings] = useState<MemberBooking[]>([]);
-  const [showBookings, setShowBookings] = useState(true);
+  
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [purchasing, setPurchasing] = useState(false);
