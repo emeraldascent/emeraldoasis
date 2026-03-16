@@ -251,10 +251,10 @@ export function MemberRoster() {
 
                 {/* Today's bookings for this member */}
                 {memberBookings && memberBookings.length > 0 && (
-                  <div className="mt-2 ml-13 pl-13 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
+                  <div className="mt-2 border-t border-gray-50 pt-1.5" style={{ marginLeft: '52px' }}>
                     {memberBookings.map((b) => (
                       <div key={b.id} className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                        <Calendar size={10} style={{ color: 'var(--ea-emerald)' }} />
+                        <Calendar size={10} className="text-ea-emerald" />
                         <span>{b.service_name}</span>
                         {b.booking_time && <span className="opacity-60">· {formatTime(b.booking_time)}</span>}
                       </div>
