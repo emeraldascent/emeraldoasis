@@ -384,7 +384,7 @@ export function MemberRoster() {
             const totalBookingCt = bookingCounts[member.id] || 0;
 
             return (
-              <div key={member.id} className="p-3 rounded-xl bg-white border border-gray-100">
+              <div key={member.id} className="p-3 rounded-xl bg-white border border-gray-100 cursor-pointer hover:border-gray-300 transition-colors" onClick={() => setSelectedMember(member)}>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={member.photo_url ?? undefined} />
