@@ -19,29 +19,56 @@ function getBadgeStatus(member: Member): BadgeStatus {
   return 'active';
 }
 
+interface JotformResult {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  license_plate: string | null;
+  photo_url: string | null;
+  pma_agreed: boolean;
+  membership_tier: string | null;
+}
+
 export function GateCheck() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Member[]>([]);
+  const [jotformResults, setJotformResults] = useState<JotformResult[]>([]);
   const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set());
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
+      setJotformResults([]);
       return;
     }
 
     const timeout = setTimeout(async () => {
       setSearching(true);
       const searchTerm = `%${query}%`;
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
-        .limit(10);
+      
+      const [membersRes, jotformRes] = await Promise.all([
+        supabase
+          .from('members')
+          .select('*')
+          .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
+          .limit(10),
+        supabase
+          .from('jotform_submissions')
+          .select('id, first_name, last_name, email, phone, license_plate, photo_url, pma_agreed, membership_tier')
+          .is('matched_member_id', null)
+          .eq('pma_agreed', true)
+          .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},license_plate.ilike.${searchTerm}`)
+          .limit(10),
+      ]);
 
-      if (!error && data) {
-        setResults(data as Member[]);
+      if (!membersRes.error && membersRes.data) {
+        setResults(membersRes.data as Member[]);
+      }
+      if (!jotformRes.error && jotformRes.data) {
+        setJotformResults(jotformRes.data as JotformResult[]);
       }
       setSearching(false);
     }, 300);
