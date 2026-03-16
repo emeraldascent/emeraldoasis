@@ -83,6 +83,8 @@ export function Dashboard({ member, badgeStatus, onRefreshMember }: DashboardPro
           </>
         )}
 
+        <AnnouncementBoard />
+
         {isActive && (
           <>
             {!member.welcome_pass_redeemed && <WelcomePassBanner />}
