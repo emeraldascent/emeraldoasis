@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar } from 'lucide-react';
+import { Crown, Calendar, Search } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
