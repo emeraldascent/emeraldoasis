@@ -116,6 +116,7 @@ Deno.serve(async (req) => {
         emergency_contact: emergencyContact,
         license_plate: licensePlate || null,
         membership_tier: membershipTier || null,
+        photo_url: photoUrl || null,
         raw_payload: formData,
       })
       .select();
