@@ -3,8 +3,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Calendar, Search, ArrowUpDown, Copy, Check } from 'lucide-react';
+import { Crown, Calendar, Search, ArrowUpDown, Copy, Check, Phone, Mail, Car, AlertTriangle } from 'lucide-react';
 import type { Member, BadgeStatus } from '../../lib/types';
 
 function getBadgeStatus(member: Member): BadgeStatus {
@@ -69,6 +70,8 @@ export function MemberRoster() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedJotform, setSelectedJotform] = useState<JotformMember | null>(null);
 
   useEffect(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -381,7 +384,7 @@ export function MemberRoster() {
             const totalBookingCt = bookingCounts[member.id] || 0;
 
             return (
-              <div key={member.id} className="p-3 rounded-xl bg-white border border-gray-100">
+              <div key={member.id} className="p-3 rounded-xl bg-white border border-gray-100 cursor-pointer hover:border-gray-300 transition-colors" onClick={() => setSelectedMember(member)}>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={member.photo_url ?? undefined} />
@@ -441,7 +444,7 @@ export function MemberRoster() {
             const jfExpired = jfExpDate ? jfExpDate < todayDate : false;
             const jfEndStr = jfExpDate ? jfExpDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
             return (
-              <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border ${jfExpired ? 'border-red-200' : 'border-amber-200'}`}>
+              <div key={`jf-${jf.id}`} className={`p-3 rounded-xl bg-white border cursor-pointer hover:border-gray-300 transition-colors ${jfExpired ? 'border-red-200' : 'border-amber-200'}`} onClick={() => setSelectedJotform(jf)}>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={jf.photo_url ?? undefined} />
@@ -475,6 +478,93 @@ export function MemberRoster() {
           )}
         </div>
       )}
+
+      {/* Member Detail Dialog */}
+      <Dialog open={!!selectedMember || !!selectedJotform} onOpenChange={() => { setSelectedMember(null); setSelectedJotform(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Member Details</DialogTitle>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={selectedMember.photo_url ?? undefined} />
+                  <AvatarFallback className="text-lg font-bold text-white bg-ea-emerald">
+                    {selectedMember.first_name[0]}{selectedMember.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-semibold">{selectedMember.first_name} {selectedMember.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedMember.membership_tier} · {getBadgeStatus(selectedMember) === 'active' ? 'Active' : 'Expired'}</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail size={14} className="text-muted-foreground" />
+                  <a href={`mailto:${selectedMember.email}`} className="text-primary underline">{selectedMember.email}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={14} className="text-muted-foreground" />
+                  <a href={`tel:${selectedMember.phone}`} className="text-primary underline">{selectedMember.phone}</a>
+                </div>
+                {selectedMember.license_plate && (
+                  <div className="flex items-center gap-2">
+                    <Car size={14} className="text-muted-foreground" />
+                    <span>{selectedMember.license_plate}</span>
+                  </div>
+                )}
+                {selectedMember.emergency_contact && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">Emergency:</span>
+                    <span>{selectedMember.emergency_contact}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {selectedJotform && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={selectedJotform.photo_url ?? undefined} />
+                  <AvatarFallback className="text-lg font-bold text-amber-900 bg-amber-300">
+                    {selectedJotform.first_name?.[0] || '?'}{selectedJotform.last_name?.[0] || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-semibold">{selectedJotform.first_name} {selectedJotform.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedJotform.membership_tier || 'PMA Only'}</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail size={14} className="text-muted-foreground" />
+                  <a href={`mailto:${selectedJotform.email}`} className="text-primary underline">{selectedJotform.email}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={14} className="text-muted-foreground" />
+                  <a href={`tel:${selectedJotform.phone}`} className="text-primary underline">{selectedJotform.phone}</a>
+                </div>
+                {selectedJotform.license_plate && (
+                  <div className="flex items-center gap-2">
+                    <Car size={14} className="text-muted-foreground" />
+                    <span>{selectedJotform.license_plate}</span>
+                  </div>
+                )}
+                {selectedJotform.emergency_contact && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">Emergency:</span>
+                    <span>{selectedJotform.emergency_contact}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
