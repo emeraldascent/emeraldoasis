@@ -176,7 +176,7 @@ serve(async (req: Request) => {
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "getUserToken",
-            params: ["emeraldoasiscamp", "admin", sbApiKey],
+            params: ["emeraldoasiscamp", "emeraldoasiscamp@gmail.com", sbApiKey],
             id: 1,
           }),
         });
