@@ -187,7 +187,7 @@ export function Events() {
             ))}
             {calDays.map(({ day, dateStr }) => {
               const dayEvents = eventsByDate[dateStr] || [];
-              const dayBookings = showBookings ? (bookingsByDate[dateStr] || []) : [];
+              const dayBookings = bookingsByDate[dateStr] || [];
               const isToday = dateStr === todayStr;
               const hasEvents = dayEvents.length > 0;
               const hasBookings = dayBookings.length > 0;
