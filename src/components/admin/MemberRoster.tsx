@@ -309,7 +309,7 @@ export function MemberRoster() {
               <div className="flex items-center gap-3">
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={jf.photo_url ?? undefined} />
-                  <AvatarFallback className="text-xs font-bold text-white bg-amber-700">
+                  <AvatarFallback className="text-xs font-bold text-amber-900 bg-amber-300">
                     {jf.first_name?.[0] || '?'}{jf.last_name?.[0] || '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -321,7 +321,7 @@ export function MemberRoster() {
                     {jf.email} · {jf.phone}
                   </p>
                 </div>
-                <Badge className="text-[9px] shrink-0 bg-amber-600">
+                <Badge className="text-[9px] shrink-0 bg-amber-400 text-amber-900">
                   PMA ONLY
                 </Badge>
               </div>
