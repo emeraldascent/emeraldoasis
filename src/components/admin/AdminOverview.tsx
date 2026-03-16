@@ -25,12 +25,19 @@ export function AdminOverview() {
       weekFromNow.setDate(weekFromNow.getDate() + 7);
       const weekStr = weekFromNow.toISOString().split('T')[0];
 
-      // Today's bookings
+      // Today's member bookings
       const { count: bookingCount } = await supabase
         .from('member_bookings')
         .select('*', { count: 'exact', head: true })
         .eq('booking_date', todayStr)
         .eq('status', 'confirmed');
+
+      // Today's site bookings (Airbnb/Hipcamp)
+      const { count: siteCount } = await supabase
+        .from('site_bookings')
+        .select('*', { count: 'exact', head: true })
+        .lte('check_in', todayStr)
+        .gt('check_out', todayStr);
 
       // Active members (from members table)
       const { count: activeCount } = await supabase
@@ -54,7 +61,7 @@ export function AdminOverview() {
         .lte('membership_end', weekStr);
 
       setStats({
-        todayBookings: bookingCount ?? 0,
+        todayBookings: (bookingCount ?? 0) + (siteCount ?? 0),
         activeMembers: (activeCount ?? 0) + (unmatchedJotformCount ?? 0),
         expiringThisWeek: expiringCount ?? 0,
       });

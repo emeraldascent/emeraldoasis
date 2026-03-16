@@ -488,6 +488,45 @@ export type Database = {
         }
         Relationships: []
       }
+      site_bookings: {
+        Row: {
+          check_in: string
+          check_out: string
+          created_at: string
+          guest_name: string
+          ical_summary: string | null
+          ical_uid: string
+          id: string
+          platform: string
+          site_name: string
+          updated_at: string
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          created_at?: string
+          guest_name?: string
+          ical_summary?: string | null
+          ical_uid: string
+          id?: string
+          platform?: string
+          site_name: string
+          updated_at?: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          created_at?: string
+          guest_name?: string
+          ical_summary?: string | null
+          ical_uid?: string
+          id?: string
+          platform?: string
+          site_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
