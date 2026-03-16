@@ -24,39 +24,42 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    // Get all jotform submissions that have a submission_id but no photo_url
+    // Get jotform submissions that have a submission_id but no usable photo
+    // (photo_url is null OR points to jotform.com which requires auth)
     const { data: submissions, error: fetchError } = await supabase
       .from("jotform_submissions")
-      .select("id, jotform_submission_id, email, matched_member_id")
-      .is("photo_url", null)
+      .select("id, jotform_submission_id, email, matched_member_id, photo_url")
       .not("jotform_submission_id", "is", null);
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch submissions: ${fetchError.message}`);
-    }
+    if (fetchError) throw new Error(`Fetch error: ${fetchError.message}`);
 
-    if (!submissions || submissions.length === 0) {
+    // Filter to only those needing photo migration
+    const needsPhoto = (submissions || []).filter(
+      (s) => !s.photo_url || s.photo_url.includes("jotform.com")
+    );
+
+    if (needsPhoto.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: "No submissions to backfill", updated: 0 }),
+        JSON.stringify({ success: true, message: "No photos to migrate", updated: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${submissions.length} submissions to backfill`);
+    console.log(`Found ${needsPhoto.length} submissions to process`);
 
     let updated = 0;
     let errors = 0;
-    const details: Array<{ email: string; status: string; photo_url?: string }> = [];
+    const details: Array<{ email: string; status: string }> = [];
 
-    for (const sub of submissions) {
+    for (const sub of needsPhoto) {
       try {
+        // Fetch submission from JotForm API
         const jfRes = await fetch(
           `https://api.jotform.com/submission/${sub.jotform_submission_id}?apiKey=${jotformApiKey}`
         );
 
         if (!jfRes.ok) {
-          const errText = await jfRes.text();
-          console.error(`JotForm API error for ${sub.jotform_submission_id}: ${jfRes.status} ${errText}`);
+          await jfRes.text();
           details.push({ email: sub.email, status: `api_error_${jfRes.status}` });
           errors++;
           continue;
@@ -65,30 +68,25 @@ Deno.serve(async (req) => {
         const jfData = await jfRes.json();
         const answers = jfData?.content?.answers || {};
 
-        // Find photo URL — look for "Member Photo" (qid 25) or any widget/upload with a URL answer
-        let photoUrl: string | null = null;
-        for (const [_qid, answer] of Object.entries(answers)) {
+        // Find the Member Photo field (qid 25, control_widget)
+        let jotformPhotoUrl: string | null = null;
+        for (const [, answer] of Object.entries(answers)) {
           const ans = answer as any;
           const fieldText = (ans.text || "").toLowerCase();
-          const fieldName = (ans.name || "").toLowerCase();
-
-          // Match "Member Photo" field specifically, or any photo/image widget
           const isPhotoField =
             fieldText.includes("member photo") ||
             fieldText.includes("profile photo") ||
-            fieldText.includes("headshot") ||
-            (fieldText.includes("photo") && !fieldText.includes("license")) ||
-            (fieldName.includes("photo") && !fieldName.includes("license"));
+            (fieldText.includes("photo") && !fieldText.includes("license") && !fieldText.includes("driver"));
 
-          if (isPhotoField && typeof ans.answer === "string" && ans.answer.startsWith("http")) {
-            photoUrl = ans.answer;
+          if (isPhotoField && typeof ans.answer === "string" && ans.answer.includes("jotform.com")) {
+            jotformPhotoUrl = ans.answer;
             break;
           }
         }
 
-        // Fallback: look for any control_widget with a jotform uploads URL containing "base64_25"
-        if (!photoUrl) {
-          for (const [_qid, answer] of Object.entries(answers)) {
+        // Fallback: any widget upload that's not license/driver related
+        if (!jotformPhotoUrl) {
+          for (const [, answer] of Object.entries(answers)) {
             const ans = answer as any;
             if (
               ans.type === "control_widget" &&
@@ -97,53 +95,84 @@ Deno.serve(async (req) => {
               !ans.text?.toLowerCase().includes("license") &&
               !ans.text?.toLowerCase().includes("driver")
             ) {
-              photoUrl = ans.answer;
+              jotformPhotoUrl = ans.answer;
               break;
             }
           }
         }
 
-        if (photoUrl) {
-          // Update jotform_submissions
-          const { error: updateError } = await supabase
-            .from("jotform_submissions")
-            .update({ photo_url: photoUrl })
-            .eq("id", sub.id);
-
-          if (updateError) {
-            console.error(`Failed to update ${sub.email}:`, updateError);
-            details.push({ email: sub.email, status: "db_update_error" });
-            errors++;
-          } else {
-            updated++;
-            details.push({ email: sub.email, status: "updated", photo_url: photoUrl });
-            console.log(`Updated photo for ${sub.email}`);
-
-            // Also update matched member record
-            if (sub.matched_member_id) {
-              await supabase
-                .from("members")
-                .update({ photo_url: photoUrl })
-                .eq("id", sub.matched_member_id);
-              console.log(`Also updated member photo for ${sub.email}`);
-            }
-          }
-        } else {
-          details.push({ email: sub.email, status: "no_photo_found" });
-          console.log(`No photo found for ${sub.email}`);
+        if (!jotformPhotoUrl) {
+          details.push({ email: sub.email, status: "no_photo_field" });
+          continue;
         }
 
-        // Rate limit: ~700ms between requests
-        await new Promise((r) => setTimeout(r, 700));
+        // Download the photo using the API key for auth
+        const photoRes = await fetch(`${jotformPhotoUrl}?apiKey=${jotformApiKey}`);
+        if (!photoRes.ok) {
+          // Try without apiKey param, maybe it needs cookie-based auth
+          // Use the direct submission file download endpoint instead
+          const altUrl = `https://api.jotform.com/submission/${sub.jotform_submission_id}?apiKey=${jotformApiKey}`;
+          details.push({ email: sub.email, status: `photo_download_failed_${photoRes.status}` });
+          errors++;
+          continue;
+        }
+
+        const photoBlob = await photoRes.arrayBuffer();
+        const contentType = photoRes.headers.get("content-type") || "image/png";
+        const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
+
+        // Upload to Supabase storage
+        const storagePath = `jotform/${sub.id}/photo.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("member-photos")
+          .upload(storagePath, photoBlob, {
+            contentType,
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error(`Upload error for ${sub.email}:`, uploadError);
+          details.push({ email: sub.email, status: "upload_error" });
+          errors++;
+          continue;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from("member-photos")
+          .getPublicUrl(storagePath);
+
+        const publicUrl = urlData.publicUrl;
+
+        // Update jotform_submissions
+        await supabase
+          .from("jotform_submissions")
+          .update({ photo_url: publicUrl })
+          .eq("id", sub.id);
+
+        // Update matched member if exists
+        if (sub.matched_member_id) {
+          await supabase
+            .from("members")
+            .update({ photo_url: publicUrl })
+            .eq("id", sub.matched_member_id);
+        }
+
+        updated++;
+        details.push({ email: sub.email, status: "migrated" });
+        console.log(`Migrated photo for ${sub.email}`);
+
+        // Rate limit
+        await new Promise((r) => setTimeout(r, 800));
       } catch (err) {
-        console.error(`Error processing ${sub.email}:`, err);
+        console.error(`Error for ${sub.email}:`, err);
         details.push({ email: sub.email, status: "error" });
         errors++;
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, total: submissions.length, updated, errors, details }),
+      JSON.stringify({ success: true, total: needsPhoto.length, updated, errors, details }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
