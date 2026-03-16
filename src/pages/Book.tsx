@@ -302,7 +302,7 @@ export function Book({ member, badgeStatus, onRefreshMember }: BookProps) {
               >
                 {isIncluded && (
                   <div className="absolute top-0 right-0 px-2 py-0.5 text-white text-[9px] font-bold rounded-bl-lg" style={{ backgroundColor: 'var(--ea-emerald)' }}>
-                    Member Benefit
+                    {member?.subscription_tier === 'gold' ? 'Gold Pass' : 'Silver Pass'}
                   </div>
                 )}
                 <div
