@@ -128,6 +128,10 @@ export function Events() {
     bookingsByDate[b.booking_date].push(b);
   });
 
+  const upcomingBookings = myBookings.filter(
+    (b) => b.booking_date >= todayStr
+  );
+
   const ticketedEventIds = new Set(myTickets.map((t) => t.event_id));
 
   const calDays: { day: number; dateStr: string }[] = [];
@@ -383,8 +387,8 @@ export function Events() {
 
         {/* Upcoming Events List */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold px-1" style={{ color: 'var(--ea-midnight)' }}>
-            Upcoming
+          <h2 className="text-sm font-semibold px-1 text-ea-midnight">
+            Upcoming Events
           </h2>
 
           {loading ? (
@@ -409,15 +413,15 @@ export function Events() {
                       className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center"
                       style={{ backgroundColor: owned ? '#DCFCE7' : '#FEF3C7' }}
                     >
-                      <span className="text-[10px] font-bold leading-none" style={{ color: 'var(--ea-midnight)' }}>
+                      <span className="text-[10px] font-bold leading-none text-ea-midnight">
                         {new Date(event.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
                       </span>
-                      <span className="text-sm font-bold leading-none" style={{ color: 'var(--ea-midnight)' }}>
+                      <span className="text-sm font-bold leading-none text-ea-midnight">
                         {new Date(event.event_date + 'T12:00:00').getDate()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--ea-midnight)' }}>
+                      <p className="text-xs font-semibold truncate text-ea-midnight">
                         {event.title}
                         {owned && <span className="text-green-600 ml-1.5">✓</span>}
                       </p>
@@ -441,6 +445,67 @@ export function Events() {
             })
           )}
         </div>
+
+        {/* Upcoming Bookings Section — toggleable */}
+        {member && (
+          <div className="space-y-3 mt-6">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-sm font-semibold text-ea-midnight">
+                Your Upcoming Bookings
+              </h2>
+              <button
+                onClick={() => setShowBookings(!showBookings)}
+                className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${
+                  showBookings ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                }`}
+              >
+                {showBookings ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
+                {showBookings ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            {showBookings && (
+              <>
+                {upcomingBookings.length === 0 ? (
+                  <div className="text-center py-6 bg-white rounded-2xl border border-gray-100">
+                    <span className="text-xl block mb-1">🌿</span>
+                    <p className="text-xs text-gray-400">No upcoming bookings</p>
+                  </div>
+                ) : (
+                  upcomingBookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="bg-white rounded-xl border border-gray-100 p-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 w-11 h-11 rounded-lg flex flex-col items-center justify-center text-center bg-blue-50">
+                          <span className="text-[10px] font-bold leading-none text-ea-midnight">
+                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+                          </span>
+                          <span className="text-sm font-bold leading-none text-ea-midnight">
+                            {new Date(booking.booking_date + 'T12:00:00').getDate()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate text-ea-midnight">
+                            {booking.service_name}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {new Date(booking.booking_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            {booking.booking_time ? ` · ${formatTime(booking.booking_time)}` : ''}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                          Confirmed
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
